@@ -24,6 +24,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [resetToken, setResetToken] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [loginAttempts, setLoginAttempts] = useState(0);
   const { signIn, signUp, sendMagicLink, resetPassword, updatePassword, resendVerification } = useAuth();
   const navigate = useNavigate();
 
@@ -36,9 +37,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       if (step === 'signin') {
         const { error } = await signIn(email, password);
         if (error) {
-          // Handle specific authentication errors
-          if (error.message.includes('Invalid login credentials')) {
-            setAuthError('Invalid email or password. Please check your credentials and try again.');
+          setLoginAttempts(prev => prev + 1);
+          
+          // Handle specific authentication errors with more helpful messages
+          if (error.message.includes('Invalid login credentials') || error.message.includes('invalid_credentials')) {
+            if (loginAttempts >= 2) {
+              setAuthError('Multiple failed login attempts detected. Please double-check your email and password, or use "Forgot Password" to reset your credentials. Make sure your email is verified if you recently signed up.');
+            } else {
+              setAuthError('Invalid email or password. Please check your credentials and try again. If you recently signed up, make sure to verify your email first.');
+            }
           } else if (error.message.includes('Email not confirmed')) {
             setAuthError('Please verify your email address before signing in. Check your inbox for a verification link.');
             // Optionally show resend verification option
@@ -47,11 +54,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             }, 2000);
           } else if (error.message.includes('Too many requests')) {
             setAuthError('Too many login attempts. Please wait a few minutes before trying again.');
+          } else if (error.message.includes('User not found')) {
+            setAuthError('No account found with this email address. Please check your email or sign up for a new account.');
           } else {
-            setAuthError(error.message || 'An error occurred during sign in.');
+            setAuthError(error.message || 'An error occurred during sign in. Please try again.');
           }
           throw error;
         }
+        
+        // Reset login attempts on successful login
+        setLoginAttempts(0);
         toast.success('Welcome back!');
         onClose();
       } else if (step === 'admin') {
@@ -61,7 +73,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           const isValidAdmin = await db.verifyAdminCredentials(email, password);
           
           if (!isValidAdmin) {
-            setAuthError('Invalid admin credentials. Please check your email and password.');
+            setAuthError('Invalid admin credentials. Please check your email and password. If you believe this is an error, contact the system administrator.');
             throw new Error('Invalid admin credentials');
           }
 
@@ -72,9 +84,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           if (signInError) {
             // If the admin user doesn't exist in auth.users, they need to sign up first
             if (signInError.message.includes('Invalid login credentials')) {
-              setAuthError('Admin account not found in authentication system. Please contact system administrator.');
+              setAuthError('Admin account not found in authentication system. Please contact system administrator to set up your admin account properly.');
             } else {
-              setAuthError(signInError.message || 'Admin authentication failed.');
+              setAuthError(signInError.message || 'Admin authentication failed. Please try again or contact support.');
             }
             throw signInError;
           }
@@ -84,14 +96,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           navigate('/admin');
         } catch (error: any) {
           if (!authError) {
-            setAuthError('Admin authentication failed. Please try again.');
+            setAuthError('Admin authentication failed. Please verify your credentials and try again.');
           }
           throw error;
         }
       } else if (step === 'signup') {
         // Validate password
         if (password.length < 6) {
-          setAuthError('Password must be at least 6 characters');
+          setAuthError('Password must be at least 6 characters long');
           throw new Error('Password must be at least 6 characters');
         }
 
@@ -112,11 +124,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           localStorage.removeItem('pendingSignupData');
           
           if (error.message.includes('User already registered')) {
-            setAuthError('An account with this email already exists. Please sign in instead or use the magic link option.');
+            setAuthError('An account with this email already exists. Please sign in instead or use the "Forgot Password" option if you need to reset your password.');
           } else if (error.message.includes('Invalid email')) {
             setAuthError('Please enter a valid email address.');
+          } else if (error.message.includes('rate limit')) {
+            setAuthError('Too many signup attempts. Please wait a few minutes before trying again.');
           } else {
-            setAuthError(error.message || 'An error occurred while sending verification email.');
+            setAuthError(error.message || 'An error occurred while sending verification email. Please try again.');
           }
           throw error;
         }
@@ -127,9 +141,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         const { error } = await sendMagicLink(email);
         if (error) {
           if (error.message.includes('User not found')) {
-            setAuthError('No account found with this email address.');
+            setAuthError('No account found with this email address. Please check your email or sign up for a new account.');
+          } else if (error.message.includes('rate limit')) {
+            setAuthError('Too many reset attempts. Please wait a few minutes before trying again.');
           } else {
-            setAuthError(error.message || 'An error occurred while sending magic link.');
+            setAuthError(error.message || 'An error occurred while sending magic link. Please try again.');
           }
           throw error;
         }
@@ -140,12 +156,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           throw new Error('Passwords do not match');
         }
         if (password.length < 6) {
-          setAuthError('Password must be at least 6 characters');
+          setAuthError('Password must be at least 6 characters long');
           throw new Error('Password must be at least 6 characters');
         }
         const { error } = await updatePassword(password);
         if (error) {
-          setAuthError(error.message || 'An error occurred while updating password.');
+          setAuthError(error.message || 'An error occurred while updating password. Please try again.');
           throw error;
         }
         toast.success('Password updated successfully!');
@@ -172,12 +188,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       const { error } = await resendVerification(email);
       if (error) {
-        setAuthError(error.message || 'Failed to resend verification email.');
+        if (error.message.includes('rate limit')) {
+          setAuthError('Too many verification emails sent. Please wait a few minutes before requesting another.');
+        } else {
+          setAuthError(error.message || 'Failed to resend verification email.');
+        }
       } else {
-        toast.success('Verification email sent! Check your inbox.');
+        toast.success('Verification email sent! Check your inbox and spam folder.');
       }
     } catch (error: any) {
-      setAuthError('Failed to resend verification email.');
+      setAuthError('Failed to resend verification email. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -195,12 +215,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       const { error } = await sendMagicLink(email);
       if (error) {
-        setAuthError(error.message || 'Failed to resend magic link.');
+        if (error.message.includes('rate limit')) {
+          setAuthError('Too many magic links sent. Please wait a few minutes before requesting another.');
+        } else {
+          setAuthError(error.message || 'Failed to resend magic link.');
+        }
       } else {
-        toast.success('Magic link sent! Check your inbox.');
+        toast.success('Magic link sent! Check your inbox and spam folder.');
       }
     } catch (error: any) {
-      setAuthError('Failed to resend magic link.');
+      setAuthError('Failed to resend magic link. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -215,6 +239,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setShowConfirmPassword(false);
     setResetToken('');
     setAuthError(null);
+    setLoginAttempts(0);
   };
 
   const handleCancel = () => {
@@ -261,6 +286,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-red-700 dark:text-red-300">
             {authError}
+            {/* Show helpful tips for common errors */}
+            {authError.includes('Invalid') && loginAttempts >= 2 && (
+              <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-800">
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  <strong>Troubleshooting tips:</strong>
+                </p>
+                <ul className="text-xs text-red-600 dark:text-red-400 mt-1 list-disc list-inside">
+                  <li>Check for typos in your email and password</li>
+                  <li>Make sure Caps Lock is not enabled</li>
+                  <li>Try copying and pasting your credentials</li>
+                  <li>Use "Forgot Password" if you're unsure</li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -281,10 +320,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             onChange={(e) => {
               setEmail(e.target.value);
               setAuthError(null);
+              // Reset login attempts when user starts typing
+              if (loginAttempts > 0) setLoginAttempts(0);
             }}
             className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50 text-white placeholder-gray-400"
             placeholder="Enter your email"
             required
+            autoComplete="email"
           />
         </div>
       </div>
@@ -299,11 +341,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             onChange={(e) => {
               setPassword(e.target.value);
               setAuthError(null);
+              // Reset login attempts when user starts typing
+              if (loginAttempts > 0) setLoginAttempts(0);
             }}
             className="w-full pl-10 pr-12 py-3 bg-gray-800/50 border border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50 text-white placeholder-gray-400"
             placeholder="Enter your password"
             required
             minLength={6}
+            autoComplete="current-password"
           />
           <button
             type="button"
@@ -393,6 +438,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500/50 text-white placeholder-gray-400"
             placeholder="Enter admin email"
             required
+            autoComplete="email"
           />
         </div>
       </div>
@@ -411,6 +457,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             className="w-full pl-10 pr-12 py-3 bg-gray-800/50 border border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500/50 text-white placeholder-gray-400"
             placeholder="Enter admin password"
             required
+            autoComplete="current-password"
           />
           <button
             type="button"
@@ -480,6 +527,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50 text-white placeholder-gray-400"
             placeholder="Enter your full name"
             required
+            autoComplete="name"
           />
         </div>
       </div>
@@ -498,6 +546,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50 text-white placeholder-gray-400"
             placeholder="Enter your email"
             required
+            autoComplete="email"
           />
         </div>
       </div>
@@ -517,6 +566,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             placeholder="Enter your password"
             required
             minLength={6}
+            autoComplete="new-password"
           />
           <button
             type="button"
@@ -590,6 +640,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50 text-white placeholder-gray-400"
             placeholder="Enter your email"
             required
+            autoComplete="email"
           />
         </div>
       </div>
@@ -697,7 +748,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4 text-left">
           <h4 className="font-medium text-blue-100 mb-2">Next Steps:</h4>
           <ol className="text-sm text-blue-200 space-y-1 list-decimal list-inside">
-            <li>Check your email inbox</li>
+            <li>Check your email inbox (and spam folder)</li>
             <li>Click the reset link</li>
             <li>You'll be automatically signed in</li>
           </ol>
@@ -757,6 +808,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             placeholder="Enter new password"
             required
             minLength={6}
+            autoComplete="new-password"
           />
           <button
             type="button"
@@ -783,6 +835,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             placeholder="Confirm new password"
             required
             minLength={6}
+            autoComplete="new-password"
           />
           <button
             type="button"
@@ -832,7 +885,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4 text-left">
           <h4 className="font-medium text-blue-100 mb-2">Next Steps:</h4>
           <ol className="text-sm text-blue-200 space-y-1 list-decimal list-inside">
-            <li>Check your email inbox</li>
+            <li>Check your email inbox (and spam folder)</li>
             <li>Click the verification link</li>
             <li>You'll be redirected to the dashboard</li>
           </ol>
@@ -881,7 +934,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4 text-left">
           <h4 className="font-medium text-blue-100 mb-2">Next Steps:</h4>
           <ol className="text-sm text-blue-200 space-y-1 list-decimal list-inside">
-            <li>Check your email inbox</li>
+            <li>Check your email inbox (and spam folder)</li>
             <li>Click the reset link</li>
             <li>Enter your new password</li>
             <li>Sign in with your new password</li>
@@ -929,7 +982,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-card-dark/80 backdrop-blur-sm rounded-xl border border-gray-700/20 p-6 w-full max-w-md"
+            className="bg-card-dark/80 backdrop-blur-sm rounded-xl border border-gray-700/20 p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

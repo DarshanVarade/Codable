@@ -14,7 +14,9 @@ import {
   Zap,
   Info,
   Settings,
-  RefreshCw
+  RefreshCw,
+  ExternalLink,
+  Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCodeAnalysis } from '../hooks/useGemini';
@@ -132,6 +134,55 @@ const CodeAnalyzer: React.FC = () => {
       </div>
     );
   };
+
+  const renderQuotaExceededMessage = () => (
+    <div className="text-center py-12">
+      <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+        <Clock className="w-8 h-8 text-red-500" />
+      </div>
+      <h3 className="text-lg font-semibold mb-2">API Quota Exceeded</h3>
+      <p className="text-gray-600 dark:text-gray-400 mb-4">
+        The Gemini AI daily quota has been reached. You can:
+      </p>
+      
+      <div className="space-y-4 max-w-md mx-auto">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-left">
+          <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Quick Solutions:</h4>
+          <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+            <li>• Wait for quota reset (typically within 24 hours)</li>
+            <li>• Switch to CopilotKit AI via navbar settings</li>
+            <li>• Use basic analysis mode for syntax checking</li>
+          </ul>
+        </div>
+        
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-left">
+          <h4 className="font-medium text-yellow-900 dark:text-yellow-100 mb-2">For Developers:</h4>
+          <ul className="text-sm text-yellow-800 dark:text-yellow-200 space-y-1">
+            <li>• Check Google Cloud Console for quota limits</li>
+            <li>• Consider upgrading your API plan</li>
+            <li>• Monitor usage to avoid future limits</li>
+          </ul>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => window.open('https://console.cloud.google.com/apis/api/generativelanguage.googleapis.com/quotas', '_blank')}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Check Quotas
+          </button>
+          <button
+            onClick={() => toast.info('Switch AI provider using the settings button in the navbar')}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors text-sm"
+          >
+            <Settings className="w-4 h-4" />
+            Switch AI Provider
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="h-full flex flex-col">

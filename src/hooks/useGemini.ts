@@ -62,15 +62,19 @@ export const useCodeAnalysis = () => {
     } catch (error: any) {
       console.error('Code analysis error:', error);
       
-      // Provide specific error messages
-      if (error.message?.includes('API key')) {
-        toast.error('Invalid API key. Please check your Gemini configuration.');
-      } else if (error.message?.includes('quota')) {
-        toast.error('API quota exceeded. Please try again later.');
-      } else if (error.message?.includes('safety')) {
+      // Provide specific error messages with better user guidance
+      if (error.message?.includes('API key') || error.message?.includes('API_KEY_INVALID')) {
+        toast.error('Invalid Gemini API key. Please check your configuration in environment variables.');
+      } else if (error.message?.includes('quota') || error.message?.includes('limit') || error.message?.includes('429')) {
+        toast.error('Gemini API quota exceeded. Try switching to CopilotKit AI or wait for quota reset.');
+        // Don't throw here - let the UI handle quota exceeded state
+        return null;
+      } else if (error.message?.includes('safety') || error.message?.includes('SAFETY')) {
         toast.error('Content blocked by safety filters. Please try different code.');
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        toast.error('Network error. Please check your connection and try again.');
       } else {
-        toast.error(error.message || 'Failed to analyze code');
+        toast.error(error.message || 'Failed to analyze code. Please try again.');
       }
       
       throw error;
@@ -145,15 +149,17 @@ export const useProblemSolver = () => {
     } catch (error: any) {
       console.error('Problem solving error:', error);
       
-      // Provide specific error messages
-      if (error.message?.includes('API key')) {
-        toast.error('Invalid API key. Please check your Gemini configuration.');
-      } else if (error.message?.includes('quota')) {
-        toast.error('API quota exceeded. Please try again later.');
-      } else if (error.message?.includes('safety')) {
+      // Provide specific error messages with better user guidance
+      if (error.message?.includes('API key') || error.message?.includes('API_KEY_INVALID')) {
+        toast.error('Invalid Gemini API key. Please check your configuration.');
+      } else if (error.message?.includes('quota') || error.message?.includes('limit') || error.message?.includes('429')) {
+        toast.error('Gemini API quota exceeded. Try switching to CopilotKit AI or wait for quota reset.');
+      } else if (error.message?.includes('safety') || error.message?.includes('SAFETY')) {
         toast.error('Content blocked by safety filters. Please try a different problem.');
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        toast.error('Network error. Please check your connection and try again.');
       } else {
-        toast.error(error.message || 'Failed to generate solution');
+        toast.error(error.message || 'Failed to generate solution. Please try again.');
       }
       
       throw error;
@@ -220,8 +226,18 @@ export const useAIChat = () => {
     } catch (error: any) {
       console.error('AI chat error:', error);
       
-      // Don't show toast here - let the calling component handle it
-      throw error;
+      // Provide specific error messages with better user guidance
+      if (error.message?.includes('API key') || error.message?.includes('API_KEY_INVALID')) {
+        throw new Error('Invalid Gemini API key. Please check your configuration.');
+      } else if (error.message?.includes('quota') || error.message?.includes('limit') || error.message?.includes('429')) {
+        throw new Error('Gemini API quota exceeded. Try switching to CopilotKit AI or wait for quota reset.');
+      } else if (error.message?.includes('safety') || error.message?.includes('SAFETY')) {
+        throw new Error('Content blocked by safety filters. Please rephrase your question.');
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        throw new Error('Network error. Please check your connection and try again.');
+      } else {
+        throw new Error(error.message || 'Failed to get AI response. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -255,7 +271,20 @@ export const useCodeOptimization = () => {
       return result;
     } catch (error: any) {
       console.error('Code optimization error:', error);
-      toast.error(error.message || 'Failed to optimize code');
+      
+      // Provide specific error messages with better user guidance
+      if (error.message?.includes('API key') || error.message?.includes('API_KEY_INVALID')) {
+        toast.error('Invalid Gemini API key. Please check your configuration.');
+      } else if (error.message?.includes('quota') || error.message?.includes('limit') || error.message?.includes('429')) {
+        toast.error('Gemini API quota exceeded. Try switching to CopilotKit AI or wait for quota reset.');
+      } else if (error.message?.includes('safety') || error.message?.includes('SAFETY')) {
+        toast.error('Content blocked by safety filters. Please try different code.');
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        toast.error('Network error. Please check your connection and try again.');
+      } else {
+        toast.error(error.message || 'Failed to optimize code. Please try again.');
+      }
+      
       throw error;
     } finally {
       setOptimizing(false);
