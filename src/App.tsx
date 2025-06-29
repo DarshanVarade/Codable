@@ -26,6 +26,41 @@ const AuthHandler: React.FC = () => {
       const type = searchParams.get('type');
       const accessToken = searchParams.get('access_token');
       const refreshToken = searchParams.get('refresh_token');
+      const error = searchParams.get('error');
+      const errorDescription = searchParams.get('error_description');
+
+      // Handle errors first
+      if (error) {
+        console.error('Auth callback error:', error, errorDescription);
+        toast.error(errorDescription || 'Authentication failed');
+        navigate('/', { replace: true });
+        return;
+      }
+
+      // Handle password reset (recovery type)
+      if (type === 'recovery' || (accessToken && refreshToken && searchParams.toString().includes('type=recovery'))) {
+        try {
+          // Set the session for password reset
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken!,
+            refresh_token: refreshToken!
+          });
+          
+          if (sessionError) {
+            console.error('Session error:', sessionError);
+            throw sessionError;
+          }
+          
+          // Redirect to reset password page
+          navigate('/reset-password', { replace: true });
+          return;
+        } catch (error: any) {
+          console.error('Password reset session error:', error);
+          toast.error('Invalid or expired reset link');
+          navigate('/', { replace: true });
+          return;
+        }
+      }
 
       // Handle email verification
       if (token && type === 'signup') {
@@ -40,35 +75,17 @@ const AuthHandler: React.FC = () => {
           
           toast.success('Email verified successfully!');
           navigate('/app/dashboard', { replace: true });
+          return;
         } catch (error: any) {
+          console.error('Email verification error:', error);
           toast.error('Email verification failed');
           navigate('/', { replace: true });
+          return;
         }
       }
       
-      // Handle password reset
-      else if (type === 'recovery' && (accessToken || token)) {
-        try {
-          // Set the session for password reset
-          if (accessToken && refreshToken) {
-            const { error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            });
-            
-            if (error) throw error;
-          }
-          
-          // Redirect to reset password page
-          navigate('/reset-password', { replace: true });
-        } catch (error: any) {
-          toast.error('Invalid reset link');
-          navigate('/', { replace: true });
-        }
-      }
-      
-      // Handle other auth callbacks
-      else if (accessToken && refreshToken) {
+      // Handle other auth callbacks (like magic links)
+      if (accessToken && refreshToken) {
         try {
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -77,22 +94,28 @@ const AuthHandler: React.FC = () => {
           
           if (error) throw error;
           
+          toast.success('Successfully authenticated!');
           navigate('/app/dashboard', { replace: true });
+          return;
         } catch (error: any) {
+          console.error('Auth session error:', error);
           toast.error('Authentication failed');
           navigate('/', { replace: true });
+          return;
         }
       }
       
       // No valid auth parameters, redirect to home
-      else {
-        navigate('/', { replace: true });
-      }
+      console.log('No valid auth parameters found, redirecting to home');
+      navigate('/', { replace: true });
     };
 
     // Only run if we have search parameters
     if (searchParams.toString()) {
       handleAuthCallback();
+    } else {
+      // No parameters at all, redirect to home
+      navigate('/', { replace: true });
     }
   }, [searchParams, navigate]);
 
@@ -101,6 +124,9 @@ const AuthHandler: React.FC = () => {
       <div className="text-center">
         <div className="w-16 h-16 border-4 border-primary-dark border-t-transparent rounded-full animate-spin mx-auto mb-4" />
         <p className="text-lg font-medium">Processing authentication...</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+          Please wait while we verify your request
+        </p>
       </div>
     </div>
   );
