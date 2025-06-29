@@ -116,13 +116,12 @@ const Dashboard: React.FC = () => {
       weeksToShow = 40; // ~10 months
     }
 
-    // Get the most recent activity date or today
-    const latestDate = realActivityData.length > 0 
-      ? new Date(Math.max(...realActivityData.map(d => d.date.getTime())))
-      : new Date();
+    // Always end at today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
 
     // Calculate start date based on weeks to show
-    const startDate = new Date(latestDate);
+    const startDate = new Date(today);
     startDate.setDate(startDate.getDate() - (weeksToShow * 7));
     
     // Align to start of week (Sunday)
@@ -165,7 +164,7 @@ const Dashboard: React.FC = () => {
     const monthLabels = [];
     const monthsToShow = Math.ceil(weeksToShow / 4.33); // Approximate months
     for (let i = monthsToShow - 1; i >= 0; i--) {
-      const date = new Date(latestDate);
+      const date = new Date(today);
       date.setMonth(date.getMonth() - i);
       monthLabels.push(date.toLocaleDateString('en-US', { month: 'short' }));
     }
@@ -338,7 +337,7 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Activity className="w-5 h-5" />
-            Login Heat Map
+            Coding Activity Heatmap
           </h3>
           <div className="text-sm text-gray-600 dark:text-gray-400">
             {totalContributions} contributions
@@ -373,22 +372,43 @@ const Dashboard: React.FC = () => {
               <div key={weekIndex} className="flex flex-col gap-1 flex-1">
                 {Array.from({ length: 7 }, (_, dayIndex) => {
                   const day = week[dayIndex];
-                  const isToday = day && day.date.toDateString() === new Date().toDateString();
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const isToday = day && day.date.getTime() === today.getTime();
                   
                   return (
                     <div
                       key={dayIndex}
-                      className={`h-3 rounded-sm border border-gray-200 dark:border-gray-600 ${
+                      className={`h-3 rounded-sm border transition-all cursor-pointer relative ${
                         day ? getIntensityColor(day.intensity) : 'bg-gray-100 dark:bg-gray-800'
-                      } ${isToday ? 'ring-2 ring-primary-dark' : ''} hover:ring-2 hover:ring-gray-400 transition-all cursor-pointer`}
-                      title={day ? `${day.date.toLocaleDateString()}: ${day.count} contributions` : ''}
+                      } ${
+                        isToday 
+                          ? 'ring-2 ring-blue-500 border-blue-500 shadow-lg scale-110 z-10' 
+                          : 'border-gray-200 dark:border-gray-600 hover:ring-2 hover:ring-gray-400'
+                      }`}
+                      title={day ? `${day.date.toLocaleDateString()}: ${day.count} contributions${isToday ? ' (Today)' : ''}` : ''}
                       style={{ aspectRatio: '1' }}
-                    />
+                    >
+                      {/* Today indicator */}
+                      {isToday && (
+                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                      )}
+                    </div>
                   );
                 })}
               </div>
             ))}
           </div>
+        </div>
+        
+        {/* Current day indicator */}
+        <div className="flex items-center justify-center gap-2 text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2">
+          <div className="w-3 h-3 bg-blue-500 rounded-sm ring-2 ring-blue-500" />
+          <span className="font-medium">Today: {new Date().toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            month: 'short', 
+            day: 'numeric' 
+          })}</span>
         </div>
         
         {/* Legend */}
