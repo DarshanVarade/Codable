@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -18,6 +18,9 @@ const Navbar: React.FC = () => {
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/app/dashboard' },
@@ -30,6 +33,27 @@ const Navbar: React.FC = () => {
   };
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    setDropdownOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setDropdownOpen(false);
+    }, 1000); // Hide after 1 second
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <nav className="bg-card-light/80 dark:bg-card-dark/80 backdrop-blur-xl border-b border-gray-200/20 dark:border-gray-700/20 px-4 sm:px-6 py-4">
@@ -75,13 +99,20 @@ const Navbar: React.FC = () => {
           </div>
           
           {/* User Dropdown */}
-          <div className="relative group">
-            <button className="w-10 h-10 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-full flex items-center justify-center text-white font-bold">
+          <div 
+            className="relative"
+            ref={dropdownRef}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            <button className="w-10 h-10 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-full flex items-center justify-center text-white font-bold hover:scale-105 transition-transform">
               {profile?.avatar_url || profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
             </button>
             
             {/* Dropdown Menu */}
-            <div className="absolute right-0 top-12 w-56 bg-card-light dark:bg-card-dark border border-gray-200/20 dark:border-gray-700/20 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+            <div className={`absolute right-0 top-12 w-56 bg-card-light dark:bg-card-dark border border-gray-200/20 dark:border-gray-700/20 rounded-lg shadow-xl transition-all duration-200 z-[9999] ${
+              dropdownOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'
+            }`}>
               <div className="p-3 border-b border-gray-200/20 dark:border-gray-700/20">
                 <p className="font-medium text-sm">{displayName}</p>
                 <p className="text-xs text-gray-600 dark:text-gray-400">{user?.email}</p>
@@ -89,14 +120,16 @@ const Navbar: React.FC = () => {
               <div className="p-2 grid grid-cols-2 gap-1">
                 <Link
                   to="/app/settings"
-                  className="flex flex-col items-center gap-1 px-3 py-3 text-sm rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
+                  className="flex flex-col items-center gap-1 px-3 py-3 text-sm rounded-lg hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
                 >
                   <User className="w-5 h-5" />
                   <span className="text-xs">Profile</span>
                 </Link>
                 <Link
                   to="/app/settings"
-                  className="flex flex-col items-center gap-1 px-3 py-3 text-sm rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
+                  className="flex flex-col items-center gap-1 px-3 py-3 text-sm rounded-lg hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
                 >
                   <Settings className="w-5 h-5" />
                   <span className="text-xs">Preferences</span>
@@ -105,10 +138,10 @@ const Navbar: React.FC = () => {
               <div className="p-2 border-t border-gray-200/20 dark:border-gray-700/20">
                 <button
                   onClick={handleSignOut}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-700 dark:text-red-400 rounded-lg hover:bg-red-100/70 dark:hover:bg-red-900/30 transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
                   </svg>
                   Sign Out
                 </button>
