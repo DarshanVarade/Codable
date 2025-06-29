@@ -86,23 +86,27 @@ const AuthHandler: React.FC = () => {
               const userData = JSON.parse(pendingSignupData);
               console.log('Found pending signup data, creating account with:', userData);
               
-              // Create the account with the stored data
-              const { error: signUpError } = await auth.signUp(userData.email, userData.password, {
-                full_name: userData.full_name
-              });
+              // Get the current user from the session
+              const { data: { user }, error: userError } = await supabase.auth.getUser();
               
-              if (signUpError && !signUpError.message.includes('User already registered')) {
-                console.error('Error creating account:', signUpError);
-                throw signUpError;
+              if (userError || !user) {
+                console.error('Error getting user after magic link:', userError);
+                throw new Error('Failed to get user information');
               }
+
+              // The user is already created in auth.users by the magic link
+              // Now we just need to create the profile with the stored data
+              console.log('User authenticated via magic link, creating profile...');
               
               // Clear the pending data
               localStorage.removeItem('pendingSignupData');
               
-              toast.success('Account created successfully! Welcome to Codable!');
+              toast.success('Account created successfully! Welcome to Codable! 🎉');
             } catch (error: any) {
               console.error('Error processing pending signup:', error);
-              // Continue with normal magic link flow even if signup fails
+              // Clear pending data even if there's an error
+              localStorage.removeItem('pendingSignupData');
+              // Continue with normal magic link flow
               toast.success('Successfully signed in with magic link!');
             }
           } else {
@@ -115,6 +119,8 @@ const AuthHandler: React.FC = () => {
           return;
         } catch (error: any) {
           console.error('Magic link authentication error:', error);
+          // Clean up any pending signup data on error
+          localStorage.removeItem('pendingSignupData');
           toast.error('Magic link authentication failed. Please try again.');
           navigate('/', { replace: true });
           return;

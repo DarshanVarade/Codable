@@ -89,25 +89,34 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           throw error;
         }
       } else if (step === 'signup') {
-        // Store user data temporarily and send magic link
+        // Validate password
+        if (password.length < 6) {
+          setAuthError('Password must be at least 6 characters');
+          throw new Error('Password must be at least 6 characters');
+        }
+
+        // Store user data temporarily in localStorage (will be used after magic link verification)
         const userData = {
           email,
           full_name: fullName,
           password
         };
         
-        // Store in localStorage temporarily
+        // Store in localStorage temporarily - this will be used when the magic link is clicked
         localStorage.setItem('pendingSignupData', JSON.stringify(userData));
         
-        // Send magic link
+        // Send magic link for signup verification
         const { error } = await sendMagicLink(email);
         if (error) {
+          // Clean up localStorage if magic link fails
+          localStorage.removeItem('pendingSignupData');
+          
           if (error.message.includes('User already registered')) {
             setAuthError('An account with this email already exists. Please sign in instead or use the magic link option.');
           } else if (error.message.includes('Invalid email')) {
             setAuthError('Please enter a valid email address.');
           } else {
-            setAuthError(error.message || 'An error occurred while sending magic link.');
+            setAuthError(error.message || 'An error occurred while sending verification email.');
           }
           throw error;
         }
@@ -453,7 +462,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <span className="font-semibold text-blue-100">Secure Account Creation</span>
         </div>
         <p className="text-sm text-blue-200">
-          We'll send you a magic link to verify your email.
+          We'll send you a magic link to verify your email and create your account.
         </p>
       </div>
       
@@ -528,7 +537,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         {loading ? (
           <div className="flex items-center justify-center gap-2">
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Sending Magic Link...
+            Sending Verification Link...
           </div>
         ) : (
           <div className="flex items-center justify-center gap-2">
@@ -625,17 +634,24 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       </div>
       
       <div>
-        <h3 className="text-lg font-semibold mb-2 text-white">Account Creation Started!</h3>
+        <h3 className="text-lg font-semibold mb-2 text-white">Verification Link Sent!</h3>
         <p className="text-gray-300 mb-4">
-          We've sent a magic link to <strong className="text-white break-all">{email}</strong>
+          We've sent a verification link to <strong className="text-white break-all">{email}</strong>
         </p>
         <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4 text-left">
           <h4 className="font-medium text-green-100 mb-2">Next Steps:</h4>
           <ol className="text-sm text-green-200 space-y-1 list-decimal list-inside">
-            <li>Check your email inbox</li>
-            <li>Click the magic link</li>
+            <li>Check your email inbox (and spam folder)</li>
+            <li>Click the verification link</li>
             <li>Your account will be created automatically</li>
+            <li>You'll be redirected to your dashboard</li>
           </ol>
+        </div>
+        <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3 text-left mt-3">
+          <p className="text-xs text-blue-200">
+            <strong>Important:</strong> Your account will only be created after you click the verification link. 
+            If you don't verify your email, no account will be created in our system.
+          </p>
         </div>
       </div>
 
@@ -653,7 +669,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           ) : (
             <div className="flex items-center justify-center gap-2">
               <RefreshCw className="w-4 h-4" />
-              Resend Magic Link
+              Resend Verification Link
             </div>
           )}
         </button>
