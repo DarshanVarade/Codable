@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Send, 
@@ -30,6 +30,8 @@ const CodableAI: React.FC = () => {
   const [input, setInput] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const { loading, sendMessage } = useAIChat();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Initialize with welcome message
   React.useEffect(() => {
@@ -61,6 +63,15 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
     };
     setMessages([welcomeMessage]);
   }, []);
+
+  // Auto-scroll to bottom when new messages are added
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -234,7 +245,7 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
                       // Headers
                       .replace(/^# (.*$)/gm, '<h1 class="text-xl font-bold mb-3 text-gray-900 dark:text-white">$1</h1>')
                       .replace(/^## (.*$)/gm, '<h2 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">$1</h2>')
-                      .replace(/^### (.*$)/gm, '<h3 class="text-base font-medium mb-2 text-gray-700 dark:text-gray-300">$3</h3>')
+                      .replace(/^### (.*$)/gm, '<h3 class="text-base font-medium mb-2 text-gray-700 dark:text-gray-300">$1</h3>')
                       // Bold and italic
                       .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900 dark:text-white">$1</strong>')
                       .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
@@ -293,9 +304,9 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-[calc(100vh-8rem)] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-lg flex items-center justify-center">
@@ -326,8 +337,12 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
 
       {/* Chat Container */}
       <div className="flex-1 bg-card-light/80 dark:bg-card-dark/80 backdrop-blur-sm rounded-xl border border-gray-200/20 dark:border-gray-700/20 overflow-hidden flex flex-col">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Messages - Fixed height with scroll */}
+        <div 
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto p-4"
+          style={{ height: 'calc(100vh - 20rem)' }}
+        >
           {messages.map(renderMessage)}
           
           {loading && (
@@ -358,16 +373,19 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
               </div>
             </motion.div>
           )}
+          
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Suggestions */}
-        <div className="p-4 border-t border-gray-200/20 dark:border-gray-700/20">
-          <div className="flex flex-wrap gap-2 mb-4">
+        {/* Fixed Input Panel at Bottom */}
+        <div className="border-t border-gray-200/20 dark:border-gray-700/20 bg-gray-50/50 dark:bg-gray-800/50 p-4">
+          {/* Suggestions */}
+          <div className="flex flex-wrap gap-2 mb-3">
             {suggestionChips.map((chip) => (
               <button
                 key={chip}
                 onClick={() => handleSuggestionClick(chip)}
-                className="px-3 py-1 text-xs bg-gray-100/50 dark:bg-gray-800/50 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors border border-gray-200/20 dark:border-gray-700/20"
+                className="px-3 py-1 text-xs bg-white dark:bg-gray-700 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600"
               >
                 {chip}
               </button>
@@ -382,7 +400,7 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Ask me anything about code... (Shift+Enter for new line)"
-                className="w-full px-4 py-3 text-sm bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary-dark/50 min-h-[60px] max-h-32"
+                className="w-full px-4 py-3 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary-dark/50 min-h-[60px] max-h-32"
                 rows={2}
                 disabled={loading}
               />

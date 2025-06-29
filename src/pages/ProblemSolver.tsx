@@ -12,13 +12,15 @@ import {
   TrendingUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useProblemSolver } from '../hooks/useGemini';
+import { useProblemSolver, useCodeOptimization } from '../hooks/useGemini';
 
 const ProblemSolver: React.FC = () => {
   const [problem, setProblem] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
   const [activeTab, setActiveTab] = useState('solution');
   const { solving, solution, solveProblem } = useProblemSolver();
+  const { optimizing, optimizeCode } = useCodeOptimization();
+  const [optimizedResult, setOptimizedResult] = useState<any>(null);
 
   const languages = [
     { value: 'javascript', label: 'JavaScript', color: 'bg-yellow-500' },
@@ -31,13 +33,10 @@ const ProblemSolver: React.FC = () => {
     { value: 'php', label: 'PHP', color: 'bg-indigo-500' },
   ];
 
+  // Only show 2 examples as requested
   const examples = [
-    "Write a program to check if a given number is even or odd",
-    "Find the two numbers in an array that add up to a target sum",
-    "Reverse a linked list iteratively and recursively",
-    "Find the longest palindromic substring in a string",
-    "Implement a binary search algorithm",
-    "Create a function to validate email addresses"
+    "Write a function that takes an array of numbers and returns the sum of all even numbers",
+    "Create a function to check if a string is a palindrome (reads the same forwards and backwards)"
   ];
 
   const handleGenerate = async () => {
@@ -48,6 +47,22 @@ const ProblemSolver: React.FC = () => {
 
     try {
       await solveProblem(problem, selectedLanguage);
+      setOptimizedResult(null); // Reset optimization when generating new solution
+    } catch (error) {
+      // Error is handled in the hook
+    }
+  };
+
+  const handleOptimize = async () => {
+    if (!solution?.solution_code) {
+      toast.error('No code to optimize');
+      return;
+    }
+
+    try {
+      const result = await optimizeCode(solution.solution_code, selectedLanguage);
+      setOptimizedResult(result);
+      setActiveTab('optimize'); // Switch to optimize tab
     } catch (error) {
       // Error is handled in the hook
     }
@@ -71,6 +86,80 @@ const ProblemSolver: React.FC = () => {
     }
   };
 
+  // Enhanced syntax highlighting for code blocks
+  const renderCodeBlock = (code: string, language?: string) => {
+    const lines = code.split('\n');
+    
+    return (
+      <div className="relative">
+        <div className="flex items-center justify-between bg-gray-800 px-4 py-2 rounded-t-lg">
+          <span className="text-xs text-gray-400 font-medium">
+            {language || 'code'}
+          </span>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(code);
+              toast.success('Code copied to clipboard');
+            }}
+            className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1"
+          >
+            <Copy className="w-3 h-3" />
+            Copy
+          </button>
+        </div>
+        <div className="bg-gray-900 p-4 rounded-b-lg overflow-x-auto">
+          <pre className="text-sm">
+            {lines.map((line, index) => (
+              <div key={index} className="flex">
+                <span className="text-gray-500 select-none w-8 text-right mr-4 text-xs">
+                  {index + 1}
+                </span>
+                <code className="flex-1" dangerouslySetInnerHTML={{ 
+                  __html: highlightSyntax(line, language) 
+                }} />
+              </div>
+            ))}
+          </pre>
+        </div>
+      </div>
+    );
+  };
+
+  // Enhanced syntax highlighting function
+  const highlightSyntax = (line: string, language?: string) => {
+    let highlighted = line;
+    
+    // Keywords (blue)
+    const keywords = ['function', 'const', 'let', 'var', 'if', 'else', 'for', 'while', 'return', 'class', 'import', 'export', 'from', 'def', 'print', 'public', 'private', 'static', 'void', 'int', 'string', 'boolean', 'true', 'false', 'null', 'undefined'];
+    keywords.forEach(keyword => {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'g');
+      highlighted = highlighted.replace(regex, `<span class="text-blue-400 font-medium">${keyword}</span>`);
+    });
+    
+    // Strings (green)
+    highlighted = highlighted.replace(/(["'`])((?:\\.|(?!\1)[^\\])*?)\1/g, '<span class="text-green-400">$1$2$1</span>');
+    
+    // Numbers (orange)
+    highlighted = highlighted.replace(/\b\d+\.?\d*\b/g, '<span class="text-orange-400">$&</span>');
+    
+    // Comments (gray)
+    highlighted = highlighted.replace(/(\/\/.*$|\/\*[\s\S]*?\*\/|#.*$)/gm, '<span class="text-gray-500 italic">$1</span>');
+    
+    // Functions and methods (yellow)
+    highlighted = highlighted.replace(/(\w+)(\s*\()/g, '<span class="text-yellow-400">$1</span>$2');
+    
+    // Variables and identifiers (cyan)
+    highlighted = highlighted.replace(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b(?!\s*[:(])/g, '<span class="text-cyan-300">$1</span>');
+    
+    // Operators (purple)
+    highlighted = highlighted.replace(/([+\-*/%=<>!&|]+)/g, '<span class="text-purple-400">$1</span>');
+    
+    // Brackets and punctuation (white)
+    highlighted = highlighted.replace(/([{}[\]();,.])/g, '<span class="text-white">$1</span>');
+    
+    return highlighted;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -82,15 +171,15 @@ const ProblemSolver: React.FC = () => {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Problem Input */}
+        {/* Problem Input - Larger as requested */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="space-y-6"
         >
-          {/* Problem Statement */}
-          <div className="bg-card-light/80 dark:bg-card-dark/80 backdrop-blur-sm rounded-xl p-6 border border-gray-200/20 dark:border-gray-700/20">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
+          {/* Problem Statement - Larger window with darker background */}
+          <div className="bg-gray-800/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+            <h3 className="font-semibold mb-4 flex items-center gap-2 text-white">
               <Lightbulb className="w-5 h-5 text-yellow-500" />
               Problem Statement
             </h3>
@@ -99,17 +188,17 @@ const ProblemSolver: React.FC = () => {
               value={problem}
               onChange={(e) => setProblem(e.target.value)}
               placeholder="Describe your programming problem in detail. For example: 'Write a function that takes a number and checks if it's even or odd'"
-              className="w-full h-32 p-4 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
+              className="w-full h-40 p-4 bg-gray-700/50 border border-gray-600/50 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-dark/50 text-white placeholder-gray-400"
             />
 
             <div className="mt-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Try these examples:</p>
+              <p className="text-sm text-gray-300 mb-3">Try these examples:</p>
               <div className="grid gap-2">
                 {examples.map((example, index) => (
                   <button
                     key={index}
                     onClick={() => setProblem(example)}
-                    className="text-left text-sm p-3 bg-gray-100/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors"
+                    className="text-left text-sm p-3 bg-gray-700/50 rounded-lg hover:bg-gray-600/50 transition-colors text-gray-200"
                   >
                     {example}
                   </button>
@@ -119,8 +208,8 @@ const ProblemSolver: React.FC = () => {
           </div>
 
           {/* Programming Language */}
-          <div className="bg-card-light/80 dark:bg-card-dark/80 backdrop-blur-sm rounded-xl p-6 border border-gray-200/20 dark:border-gray-700/20">
-            <h3 className="font-semibold mb-4">Programming Language</h3>
+          <div className="bg-gray-800/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+            <h3 className="font-semibold mb-4 text-white">Programming Language</h3>
             <div className="grid grid-cols-2 gap-3">
               {languages.map((lang) => (
                 <button
@@ -129,7 +218,7 @@ const ProblemSolver: React.FC = () => {
                   className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                     selectedLanguage === lang.value
                       ? 'border-primary-dark bg-primary-dark/20 text-primary-dark'
-                      : 'border-gray-200/20 dark:border-gray-700/20 hover:border-primary-dark/50'
+                      : 'border-gray-600/50 hover:border-primary-dark/50 text-gray-300'
                   }`}
                 >
                   <div className={`w-3 h-3 ${lang.color} rounded-full`} />
@@ -201,21 +290,33 @@ const ProblemSolver: React.FC = () => {
                   <>
                     <div className="flex items-center justify-between">
                       <h4 className="font-semibold">Generated Solution</h4>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(solution.solution_code);
-                          toast.success('Code copied to clipboard');
-                        }}
-                        className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors"
-                      >
-                        <Copy className="w-4 h-4" />
-                        Copy
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(solution.solution_code);
+                            toast.success('Code copied to clipboard');
+                          }}
+                          className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors"
+                        >
+                          <Copy className="w-4 h-4" />
+                          Copy
+                        </button>
+                        <button
+                          onClick={handleOptimize}
+                          disabled={optimizing}
+                          className="flex items-center gap-2 px-3 py-1 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50"
+                        >
+                          {optimizing ? (
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Zap className="w-4 h-4" />
+                          )}
+                          Optimize
+                        </button>
+                      </div>
                     </div>
                     
-                    <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm text-green-400 overflow-x-auto">
-                      <pre>{solution.solution_code}</pre>
-                    </div>
+                    {renderCodeBlock(solution.solution_code, selectedLanguage)}
 
                     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                       <h5 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Explanation</h5>
@@ -282,9 +383,40 @@ const ProblemSolver: React.FC = () => {
 
                 {activeTab === 'optimize' && (
                   <div className="space-y-4">
-                    <h4 className="font-semibold">Optimization Suggestions</h4>
+                    <h4 className="font-semibold">Code Optimization</h4>
                     
-                    {solution.optimization_suggestions && solution.optimization_suggestions.length > 0 ? (
+                    {optimizing ? (
+                      <div className="text-center py-8">
+                        <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                        <p className="font-medium text-yellow-900 dark:text-yellow-100">Optimizing code...</p>
+                        <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                          Analyzing and improving your solution
+                        </p>
+                      </div>
+                    ) : optimizedResult ? (
+                      <div className="space-y-4">
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                          <h5 className="font-semibold text-green-900 dark:text-green-100 mb-3">Optimized Code</h5>
+                          {renderCodeBlock(optimizedResult.optimized_code, selectedLanguage)}
+                        </div>
+                        
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                          <h5 className="font-semibold text-blue-900 dark:text-blue-100 mb-3">What Was Optimized</h5>
+                          <div className="space-y-3">
+                            {optimizedResult.improvements.map((improvement: any, index: number) => (
+                              <div key={index} className="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg">
+                                <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
+                                <div>
+                                  <p className="font-medium text-sm">{improvement.type}</p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{improvement.description}</p>
+                                  <p className="text-xs text-green-600 dark:text-green-400 font-medium">Impact: {improvement.impact}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : solution.optimization_suggestions && solution.optimization_suggestions.length > 0 ? (
                       <div className="space-y-3">
                         {solution.optimization_suggestions.map((suggestion, index) => {
                           const Icon = getOptimizationIcon(suggestion.type);
@@ -314,6 +446,13 @@ const ProblemSolver: React.FC = () => {
                         <p className="text-sm text-green-800 dark:text-green-200">
                           Your solution is already well-optimized.
                         </p>
+                        <button
+                          onClick={handleOptimize}
+                          disabled={optimizing}
+                          className="mt-3 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50"
+                        >
+                          Try Advanced Optimization
+                        </button>
                       </div>
                     )}
                   </div>
