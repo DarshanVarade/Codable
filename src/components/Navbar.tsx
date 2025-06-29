@@ -67,13 +67,10 @@ const Navbar: React.FC = () => {
 
         {/* User Menu */}
         <div className="flex items-center gap-4">
-          {/* Welcome Text - Hidden on small screens */}
-          <div className="hidden xl:block text-right">
+          {/* User Name - Hidden on small screens */}
+          <div className="hidden md:block">
             <p className="text-sm font-medium">
-              Welcome back, {displayName}
-            </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Track your progress
+              {displayName}
             </p>
           </div>
           
