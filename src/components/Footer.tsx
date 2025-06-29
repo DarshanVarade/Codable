@@ -19,21 +19,21 @@ const Footer: React.FC = () => {
   const creators = [
     {
       name: 'Darshan Varade',
-      role: 'Lead Developer & AI Architect',
+      role: 'Lead Developer',
       github: 'https://github.com/DarshanVarade/',
       username: 'DarshanVarade',
       avatar: 'DV',
       gradient: 'from-blue-500 to-purple-500',
-      skills: ['React', 'TypeScript', 'AI Integration']
+      skills: ['React', 'TypeScript', 'Node.js', 'AI Integration']
     },
     {
       name: 'Umesh Chaudhari',
-      role: 'Full Stack Developer & UI/UX Designer',
+      role: 'Full Stack Developer',
       github: 'https://github.com/chaudhariumesh051',
       username: 'chaudhariumesh051',
       avatar: 'UC',
       gradient: 'from-green-500 to-blue-500',
-      skills: ['Node.js', 'Database Design', 'UI/UX']
+      skills: ['React', 'Node.js', 'Database Design', 'UI/UX']
     }
   ];
 
@@ -101,7 +101,7 @@ const Footer: React.FC = () => {
                       className="px-3 py-1 bg-gray-800/50 border border-gray-700/50 rounded-full text-xs text-gray-300 hover:bg-gray-700/50 transition-colors"
                     >
                       {tech}
-                    </motion.span>
+                    </span>
                   ))}
                 </div>
               </div>
