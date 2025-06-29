@@ -13,11 +13,12 @@ import {
   AlertCircle,
   Info,
   RefreshCw,
-  Settings
+  Settings,
+  Bot
 } from 'lucide-react';
 import { CopilotSidebar } from '@copilotkit/react-ui';
 import { useAIChat } from '../hooks/useGemini';
-import { useCopilotKitIntegration } from '../hooks/useCopilotKit';
+import { useCopilotKitIntegration, useCopilotKitChat } from '../hooks/useCopilotKit';
 import toast from 'react-hot-toast';
 
 interface Message {
@@ -35,29 +36,38 @@ const CodableAI: React.FC = () => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [showCopilotSidebar, setShowCopilotSidebar] = useState(false);
   const { loading: geminiLoading, sendMessage: sendGeminiMessage } = useAIChat();
-  const { loading: copilotLoading, generateCode, chat: copilotChat } = useCopilotKitIntegration();
+  const { loading: copilotLoading } = useCopilotKitIntegration();
+  const { loading: copilotChatLoading, sendMessage: sendCopilotMessage } = useCopilotKitChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Get AI provider from localStorage
+  // Get AI provider from localStorage and listen for changes
   const [aiProvider, setAiProvider] = useState<'gemini' | 'copilotkit'>(() => {
     return (localStorage.getItem('aiProvider') as 'gemini' | 'copilotkit') || 'gemini';
   });
 
-  const loading = geminiLoading || copilotLoading;
+  const loading = geminiLoading || copilotLoading || copilotChatLoading;
 
-  // Listen for changes in localStorage
+  // Listen for changes in localStorage (from navbar switch)
   useEffect(() => {
-    const handleStorageChange = () => {
-      const savedProvider = localStorage.getItem('aiProvider') as 'gemini' | 'copilotkit';
-      if (savedProvider && savedProvider !== aiProvider) {
-        setAiProvider(savedProvider);
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'aiProvider' && e.newValue) {
+        setAiProvider(e.newValue as 'gemini' | 'copilotkit');
+      }
+    };
+
+    // Listen for custom storage events (same tab)
+    const handleCustomStorageChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.key === 'aiProvider') {
+        setAiProvider(customEvent.detail.newValue);
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('storage', handleCustomStorageChange);
     
-    // Also check for changes in the same tab
+    // Also check for changes periodically
     const interval = setInterval(() => {
       const savedProvider = localStorage.getItem('aiProvider') as 'gemini' | 'copilotkit';
       if (savedProvider && savedProvider !== aiProvider) {
@@ -67,6 +77,7 @@ const CodableAI: React.FC = () => {
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('storage', handleCustomStorageChange);
       clearInterval(interval);
     };
   }, [aiProvider]);
@@ -100,7 +111,7 @@ I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** a
 
 **Just paste your code or ask any programming question to get started!** ✨
 
-**Note**: You can change your AI provider in Settings → Preferences → AI Assistant Provider`,
+**Note**: You can switch between AI providers using the button in the navbar. ${aiProvider === 'copilotkit' ? 'CopilotKit requires a backend proxy for full functionality.' : 'Gemini provides full AI capabilities.'}`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       source: aiProvider
     };
@@ -137,7 +148,7 @@ I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** a
 
       if (aiProvider === 'copilotkit') {
         // Use CopilotKit for response
-        response = await copilotChat(currentInput);
+        response = await sendCopilotMessage(currentInput);
         source = 'copilotkit';
         toast.success('Response from CopilotKit! 🤖');
       } else {
@@ -169,13 +180,20 @@ I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** a
         role: 'assistant',
         content: `❌ **Error**: ${error.message || 'Failed to get response'}
 
-Please try again or switch to a different AI provider in Settings.`,
+${aiProvider === 'copilotkit' 
+  ? '**CopilotKit Notice**: This integration requires a backend proxy for full functionality. Try switching to Gemini using the AI provider button in the navbar for immediate assistance!' 
+  : 'Please try again or check your connection.'}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         source: aiProvider
       };
       
       setMessages(prev => [...prev, errorMessage]);
-      toast.error(`${aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini'} error: ${error.message}`);
+      
+      if (aiProvider === 'copilotkit') {
+        toast.error('CopilotKit requires backend setup. Try Gemini instead!');
+      } else {
+        toast.error(`Gemini error: ${error.message}`);
+      }
     }
   };
 
@@ -280,7 +298,11 @@ Please try again or switch to a different AI provider in Settings.`,
                   ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
                   : 'bg-gradient-to-br from-primary-dark to-secondary-dark'
               }`}>
-                <Brain className="w-3 h-3 text-white" />
+                {message.source === 'copilotkit' ? (
+                  <Bot className="w-3 h-3 text-white" />
+                ) : (
+                  <Brain className="w-3 h-3 text-white" />
+                )}
               </div>
               <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
                 {message.source === 'copilotkit' ? 'CopilotKit AI' : 'Codable AI'}
@@ -401,8 +423,16 @@ Please try again or switch to a different AI provider in Settings.`,
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-lg flex items-center justify-center">
-              <Brain className="w-5 h-5 text-white" />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+              aiProvider === 'copilotkit' 
+                ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+                : 'bg-gradient-to-br from-primary-dark to-secondary-dark'
+            }`}>
+              {aiProvider === 'copilotkit' ? (
+                <Bot className="w-5 h-5 text-white" />
+              ) : (
+                <Brain className="w-5 h-5 text-white" />
+              )}
             </div>
             Codable AI
           </h1>
@@ -462,7 +492,11 @@ Please try again or switch to a different AI provider in Settings.`,
                       ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
                       : 'bg-gradient-to-br from-primary-dark to-secondary-dark'
                   }`}>
-                    <Brain className="w-3 h-3 text-white" />
+                    {aiProvider === 'copilotkit' ? (
+                      <Bot className="w-3 h-3 text-white" />
+                    ) : (
+                      <Brain className="w-3 h-3 text-white" />
+                    )}
                   </div>
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
                     {aiProvider === 'copilotkit' ? 'CopilotKit AI' : 'Codable AI'}
@@ -502,7 +536,11 @@ Please try again or switch to a different AI provider in Settings.`,
                 ? 'bg-purple-500/20 text-purple-600 dark:text-purple-400' 
                 : 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
             }`}>
-              <Brain className="w-3 h-3" />
+              {aiProvider === 'copilotkit' ? (
+                <Bot className="w-3 h-3" />
+              ) : (
+                <Brain className="w-3 h-3" />
+              )}
               <span>Powered by {aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini 2.0 Flash'}</span>
             </div>
           </div>
@@ -548,7 +586,7 @@ Please try again or switch to a different AI provider in Settings.`,
           </div>
           
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-            Press Enter to send • Shift+Enter for new line • Using {aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini 2.0 Flash'} • Change provider in Settings
+            Press Enter to send • Shift+Enter for new line • Using {aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini 2.0 Flash'} • Switch provider in navbar
           </p>
         </div>
       </div>
