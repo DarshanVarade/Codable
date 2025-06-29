@@ -8,7 +8,8 @@ import {
   Sun,
   Moon,
   Monitor,
-  Camera
+  Camera,
+  CheckCircle
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useProfile } from '../hooks/useProfile';
@@ -30,19 +31,37 @@ const Settings: React.FC = () => {
     location: '',
     bio: ''
   });
+  const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Update form data when profile loads
   useEffect(() => {
     if (profile) {
-      setFormData({
+      const newFormData = {
         full_name: profile.full_name || '',
         username: profile.username || '',
         website: profile.website || '',
         location: profile.location || '',
         bio: profile.bio || ''
-      });
+      };
+      setFormData(newFormData);
+      setHasChanges(false);
     }
   }, [profile]);
+
+  // Check for changes whenever form data updates
+  useEffect(() => {
+    if (profile) {
+      const hasProfileChanges = 
+        formData.full_name !== (profile.full_name || '') ||
+        formData.username !== (profile.username || '') ||
+        formData.website !== (profile.website || '') ||
+        formData.location !== (profile.location || '') ||
+        formData.bio !== (profile.bio || '');
+      
+      setHasChanges(hasProfileChanges);
+    }
+  }, [formData, profile]);
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -70,19 +89,51 @@ const Settings: React.FC = () => {
   ];
 
   const handleSave = async () => {
+    if (!hasChanges) {
+      toast('No changes to save', {
+        icon: '💡',
+        duration: 2000,
+      });
+      return;
+    }
+
+    setSaving(true);
     try {
       const { error } = await updateProfile(formData);
       if (error) {
-        toast.error('Failed to update profile');
+        toast.error('Failed to update profile. Please try again.');
+        console.error('Profile update error:', error);
       } else {
-        toast.success('Changes applied successfully!');
+        toast.success('Profile updated successfully! 🎉', {
+          duration: 3000,
+          style: {
+            background: '#10B981',
+            color: '#FFFFFF',
+          },
+          iconTheme: {
+            primary: '#FFFFFF',
+            secondary: '#10B981',
+          },
+        });
+        setHasChanges(false);
       }
     } catch (error) {
-      toast.error('Failed to update profile');
+      toast.error('An unexpected error occurred. Please try again.');
+      console.error('Profile update error:', error);
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleCancel = () => {
+    if (!hasChanges) {
+      toast('No changes to cancel', {
+        icon: '💡',
+        duration: 2000,
+      });
+      return;
+    }
+
     setFormData({
       full_name: profile?.full_name || '',
       username: profile?.username || '',
@@ -90,7 +141,11 @@ const Settings: React.FC = () => {
       location: profile?.location || '',
       bio: profile?.bio || ''
     });
-    toast('Changes cancelled');
+    setHasChanges(false);
+    toast('Changes cancelled', {
+      icon: '↩️',
+      duration: 2000,
+    });
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -100,11 +155,82 @@ const Settings: React.FC = () => {
   const handleAvatarSelect = async (avatarId: string) => {
     try {
       const avatarUrl = avatarId === 'none' ? null : avatarOptions.find(opt => opt.id === avatarId)?.emoji;
-      await updateProfile({ avatar_url: avatarUrl });
-      setShowAvatarModal(false);
-      toast.success('Avatar updated successfully!');
+      const { error } = await updateProfile({ avatar_url: avatarUrl });
+      
+      if (error) {
+        toast.error('Failed to update avatar. Please try again.');
+        console.error('Avatar update error:', error);
+      } else {
+        setShowAvatarModal(false);
+        toast.success('Avatar updated successfully! ✨', {
+          duration: 3000,
+          style: {
+            background: '#8B5CF6',
+            color: '#FFFFFF',
+          },
+        });
+      }
     } catch (error) {
-      toast.error('Failed to update avatar');
+      toast.error('An unexpected error occurred while updating avatar.');
+      console.error('Avatar update error:', error);
+    }
+  };
+
+  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
+    const previousTheme = theme;
+    setTheme(newTheme);
+    
+    // Show success message with theme-specific styling
+    const themeMessages = {
+      light: { message: 'Switched to Light theme ☀️', bg: '#F59E0B' },
+      dark: { message: 'Switched to Dark theme 🌙', bg: '#6366F1' },
+      system: { message: 'Using System theme 💻', bg: '#10B981' }
+    };
+    
+    const themeInfo = themeMessages[newTheme];
+    
+    toast.success(themeInfo.message, {
+      duration: 2500,
+      style: {
+        background: themeInfo.bg,
+        color: '#FFFFFF',
+      },
+    });
+  };
+
+  const handleLanguageChange = (newLanguage: string) => {
+    const previousLanguage = defaultLanguage;
+    setDefaultLanguage(newLanguage);
+    
+    if (previousLanguage !== newLanguage) {
+      toast.success(`Default language set to ${languages.find(l => l.value === newLanguage)?.label} 🚀`, {
+        duration: 2500,
+        style: {
+          background: '#3B82F6',
+          color: '#FFFFFF',
+        },
+      });
+    }
+  };
+
+  const handleAnalysisDepthChange = (newDepth: string) => {
+    const previousDepth = analysisDepth;
+    setAnalysisDepth(newDepth);
+    
+    if (previousDepth !== newDepth) {
+      const depthMessages = {
+        quick: 'Analysis depth set to Quick ⚡',
+        standard: 'Analysis depth set to Standard ⚖️',
+        detailed: 'Analysis depth set to Detailed 🔍'
+      };
+      
+      toast.success(depthMessages[newDepth as keyof typeof depthMessages], {
+        duration: 2500,
+        style: {
+          background: '#059669',
+          color: '#FFFFFF',
+        },
+      });
     }
   };
 
@@ -260,7 +386,7 @@ const Settings: React.FC = () => {
                         ].map((option) => (
                           <button
                             key={option.value}
-                            onClick={() => setTheme(option.value as any)}
+                            onClick={() => handleThemeChange(option.value as any)}
                             className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${
                               theme === option.value
                                 ? 'border-primary-dark bg-primary-dark/20 text-primary-dark'
@@ -279,7 +405,7 @@ const Settings: React.FC = () => {
                       <h3 className="text-lg font-medium mb-3">Default Language</h3>
                       <select
                         value={defaultLanguage}
-                        onChange={(e) => setDefaultLanguage(e.target.value)}
+                        onChange={(e) => handleLanguageChange(e.target.value)}
                         className="w-full md:w-auto px-4 py-2 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
                       >
                         {languages.map((lang) => (
@@ -301,7 +427,7 @@ const Settings: React.FC = () => {
                         ].map((option) => (
                           <button
                             key={option.value}
-                            onClick={() => setAnalysisDepth(option.value)}
+                            onClick={() => handleAnalysisDepthChange(option.value)}
                             className={`flex flex-col gap-2 p-4 rounded-lg border text-left transition-all ${
                               analysisDepth === option.value
                                 ? 'border-primary-dark bg-primary-dark/20'
@@ -319,23 +445,36 @@ const Settings: React.FC = () => {
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200/20 dark:border-gray-700/20 mt-8">
-              <button
-                onClick={handleCancel}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
-              >
-                <X className="w-4 h-4" />
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                className="flex items-center gap-2 px-6 py-2 bg-primary-dark text-white rounded-lg hover:bg-primary-dark/80 transition-colors"
-              >
-                <Save className="w-4 h-4" />
-                Save Changes
-              </button>
-            </div>
+            {/* Action Buttons - Only show for profile tab */}
+            {activeTab === 'profile' && (
+              <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200/20 dark:border-gray-700/20 mt-8">
+                <button
+                  onClick={handleCancel}
+                  disabled={!hasChanges}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={!hasChanges || saving}
+                  className="flex items-center gap-2 px-6 py-2 bg-primary-dark text-white rounded-lg hover:bg-primary-dark/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save Changes
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </motion.div>
         </div>
       </div>
