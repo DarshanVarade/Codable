@@ -74,7 +74,10 @@ export const useCopilotKitIntegration = () => {
       setLoading(true);
       try {
         // Use CopilotKit for code explanation
-        const explanation = `This ${language} code: ${code.substring(0, 100)}...`;
+        const explanation = await copilotKitService.chat(
+          `Explain this ${language} code: ${code}`,
+          `Code explanation for ${language}`
+        );
         toast.success('Code explained with CopilotKit!');
         return { explanation };
       } catch (error) {
@@ -102,7 +105,7 @@ export const useCopilotKitChat = () => {
       const response = await copilotKitService.chat(message, context);
       return response;
     } catch (error) {
-      toast.error('Failed to send message');
+      toast.error('Failed to send message to CopilotKit');
       throw error;
     } finally {
       setLoading(false);

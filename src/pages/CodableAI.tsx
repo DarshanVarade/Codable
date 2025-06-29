@@ -56,7 +56,19 @@ const CodableAI: React.FC = () => {
     };
 
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    
+    // Also check for changes in the same tab
+    const interval = setInterval(() => {
+      const savedProvider = localStorage.getItem('aiProvider') as 'gemini' | 'copilotkit';
+      if (savedProvider && savedProvider !== aiProvider) {
+        setAiProvider(savedProvider);
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
   }, [aiProvider]);
 
   // Initialize with welcome message
@@ -150,8 +162,20 @@ I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** a
       };
       
       setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      // Error is already handled in the hooks
+    } catch (error: any) {
+      // Show error message to user
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `❌ **Error**: ${error.message || 'Failed to get response'}
+
+Please try again or switch to a different AI provider in Settings.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        source: aiProvider
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      toast.error(`${aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini'} error: ${error.message}`);
     }
   };
 
