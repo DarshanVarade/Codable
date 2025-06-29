@@ -56,7 +56,7 @@ const Navbar: React.FC = () => {
   }, []);
 
   return (
-    <nav className="bg-card-light/80 dark:bg-card-dark/80 backdrop-blur-xl border-b border-gray-200/20 dark:border-gray-700/20 px-4 sm:px-6 py-4">
+    <nav className="bg-card-light/80 dark:bg-card-dark/80 backdrop-blur-xl border-b border-gray-200/20 dark:border-gray-700/20 px-4 sm:px-6 py-4 relative z-50">
       <div className="flex items-center justify-between">
         {/* Logo */}
         <Link to="/app/dashboard" className="flex items-center gap-3">
@@ -100,19 +100,19 @@ const Navbar: React.FC = () => {
           
           {/* User Dropdown */}
           <div 
-            className="relative"
+            className="relative z-[99999]"
             ref={dropdownRef}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
-            <button className="w-10 h-10 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-full flex items-center justify-center text-white font-bold hover:scale-105 transition-transform">
+            <button className="w-10 h-10 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-full flex items-center justify-center text-white font-bold hover:scale-105 transition-transform relative z-[99999]">
               {profile?.avatar_url || profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
             </button>
             
             {/* Dropdown Menu */}
-            <div className={`absolute right-0 top-12 w-56 bg-card-light dark:bg-card-dark border border-gray-200/20 dark:border-gray-700/20 rounded-lg shadow-xl transition-all duration-200 z-[9999] ${
+            <div className={`absolute right-0 top-12 w-56 bg-card-light dark:bg-card-dark border border-gray-200/20 dark:border-gray-700/20 rounded-lg shadow-2xl transition-all duration-200 z-[99999] ${
               dropdownOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'
-            }`}>
+            }`} style={{ zIndex: 99999 }}>
               <div className="p-3 border-b border-gray-200/20 dark:border-gray-700/20">
                 <p className="font-medium text-sm">{displayName}</p>
                 <p className="text-xs text-gray-600 dark:text-gray-400">{user?.email}</p>
