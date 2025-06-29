@@ -57,7 +57,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       } else if (step === 'admin') {
         // Handle admin login
         try {
-          // First verify admin credentials
+          // First verify admin credentials using the secure RPC function
           const isValidAdmin = await db.verifyAdminCredentials(email, password);
           
           if (!isValidAdmin) {
@@ -65,27 +65,18 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             throw new Error('Invalid admin credentials');
           }
 
-          // If admin credentials are valid, create a regular user session
-          // For demo purposes, we'll use the admin email with a dummy password
-          // In production, you'd want a more secure approach
+          // If admin credentials are valid, sign in normally
+          // Admin users should also exist in the regular auth system
           const { error: signInError } = await signIn(email, password);
           
           if (signInError) {
-            // If the admin user doesn't exist in auth.users, create them
-            const { error: signUpError } = await signUp(email, password, { 
-              full_name: 'Administrator',
-              is_admin: true 
-            });
-            
-            if (signUpError && !signUpError.message.includes('User already registered')) {
-              throw signUpError;
+            // If the admin user doesn't exist in auth.users, they need to sign up first
+            if (signInError.message.includes('Invalid login credentials')) {
+              setAuthError('Admin account not found in authentication system. Please contact system administrator.');
+            } else {
+              setAuthError(signInError.message || 'Admin authentication failed.');
             }
-            
-            // Try signing in again
-            const { error: retrySignInError } = await signIn(email, password);
-            if (retrySignInError) {
-              throw retrySignInError;
-            }
+            throw signInError;
           }
 
           toast.success('Welcome, Administrator!');

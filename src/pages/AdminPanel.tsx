@@ -15,31 +15,30 @@ import {
   UserX,
   Crown
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { db } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
-interface User {
+interface AdminUser {
   id: string;
   email: string;
   created_at: string;
-  profiles: {
-    full_name: string | null;
-    username: string | null;
-    avatar_url: string | null;
-  } | null;
-  user_stats: {
-    total_analyses: number;
-    problems_solved: number;
-    current_streak: number;
-    last_activity: string;
-  } | null;
+  email_confirmed_at: string | null;
+  last_sign_in_at: string | null;
+  full_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  profile_created_at: string | null;
+  total_analyses: number;
+  problems_solved: number;
+  current_streak: number;
+  last_activity: string | null;
 }
 
 const AdminPanel: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [stats, setStats] = useState({
@@ -57,57 +56,23 @@ const AdminPanel: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch users with their profiles and stats
-      const { data: usersData, error } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          full_name,
-          username,
-          avatar_url,
-          created_at,
-          user_stats (
-            total_analyses,
-            problems_solved,
-            current_streak,
-            last_activity
-          )
-        `)
-        .order('created_at', { ascending: false });
+      // Use the new RPC function to fetch users securely
+      const { data: usersData, error } = await db.getAdminPanelUsers();
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      // Get auth users to get email addresses
-      const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) throw authError;
-
-      // Combine the data
-      const combinedUsers = usersData.map(profile => {
-        const authUser = authUsers.find(u => u.id === profile.id);
-        return {
-          id: profile.id,
-          email: authUser?.email || 'Unknown',
-          created_at: profile.created_at,
-          profiles: {
-            full_name: profile.full_name,
-            username: profile.username,
-            avatar_url: profile.avatar_url
-          },
-          user_stats: profile.user_stats?.[0] || null
-        };
-      });
-
-      setUsers(combinedUsers);
+      setUsers(usersData || []);
 
       // Calculate stats
-      const totalUsers = combinedUsers.length;
-      const activeUsers = combinedUsers.filter(u => 
-        u.user_stats?.last_activity && 
-        new Date(u.user_stats.last_activity) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      ).length;
-      const totalAnalyses = combinedUsers.reduce((sum, u) => sum + (u.user_stats?.total_analyses || 0), 0);
-      const totalProblems = combinedUsers.reduce((sum, u) => sum + (u.user_stats?.problems_solved || 0), 0);
+      const totalUsers = usersData?.length || 0;
+      const activeUsers = usersData?.filter(u => 
+        u.last_activity && 
+        new Date(u.last_activity) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      ).length || 0;
+      const totalAnalyses = usersData?.reduce((sum, u) => sum + (u.total_analyses || 0), 0) || 0;
+      const totalProblems = usersData?.reduce((sum, u) => sum + (u.problems_solved || 0), 0) || 0;
 
       setStats({
         totalUsers,
@@ -117,8 +82,13 @@ const AdminPanel: React.FC = () => {
       });
 
     } catch (error: any) {
-      toast.error('Failed to fetch users');
       console.error('Error fetching users:', error);
+      
+      if (error.message?.includes('Admin privileges required') || error.message?.includes('Access denied')) {
+        toast.error('Access denied. Admin privileges required.');
+      } else {
+        toast.error('Failed to fetch users');
+      }
     } finally {
       setLoading(false);
     }
@@ -129,17 +99,25 @@ const AdminPanel: React.FC = () => {
 
     setDeleting(true);
     try {
-      // Delete user from auth
-      const { error: authError } = await supabase.auth.admin.deleteUser(selectedUser.id);
-      if (authError) throw authError;
+      // Use the new RPC function to delete user securely
+      const { error } = await db.deleteUserAdmin(selectedUser.id);
+      
+      if (error) {
+        throw error;
+      }
 
       toast.success('User deleted successfully');
       setShowDeleteModal(false);
       setSelectedUser(null);
       fetchUsers(); // Refresh the list
     } catch (error: any) {
-      toast.error('Failed to delete user');
       console.error('Error deleting user:', error);
+      
+      if (error.message?.includes('Admin privileges required') || error.message?.includes('Access denied')) {
+        toast.error('Access denied. Admin privileges required.');
+      } else {
+        toast.error('Failed to delete user');
+      }
     } finally {
       setDeleting(false);
     }
@@ -147,11 +125,12 @@ const AdminPanel: React.FC = () => {
 
   const filteredUsers = users.filter(user => 
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.profiles?.username?.toLowerCase().includes(searchTerm.toLowerCase())
+    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.username?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Never';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -298,21 +277,24 @@ const AdminPanel: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-200/20 dark:divide-gray-700/20">
                 {filteredUsers.map((user) => {
-                  const activity = getActivityStatus(user.user_stats?.last_activity || null);
+                  const activity = getActivityStatus(user.last_activity);
                   return (
                     <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-full flex items-center justify-center text-white font-bold">
-                            {user.profiles?.avatar_url || user.profiles?.full_name?.[0] || user.email[0].toUpperCase()}
+                            {user.avatar_url || user.full_name?.[0] || user.email[0].toUpperCase()}
                           </div>
                           <div>
                             <p className="font-medium text-gray-900 dark:text-white">
-                              {user.profiles?.full_name || 'Unnamed User'}
+                              {user.full_name || 'Unnamed User'}
                             </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
-                            {user.profiles?.username && (
-                              <p className="text-xs text-gray-500">@{user.profiles.username}</p>
+                            {user.username && (
+                              <p className="text-xs text-gray-500">@{user.username}</p>
+                            )}
+                            {!user.email_confirmed_at && (
+                              <p className="text-xs text-red-500">Email not verified</p>
                             )}
                           </div>
                         </div>
@@ -321,19 +303,24 @@ const AdminPanel: React.FC = () => {
                         <span className={`text-sm font-medium ${activity.color}`}>
                           {activity.status}
                         </span>
+                        {user.last_sign_in_at && (
+                          <p className="text-xs text-gray-500">
+                            Last login: {formatDate(user.last_sign_in_at)}
+                          </p>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm">
                           <div className="flex items-center gap-4">
                             <span className="text-gray-600 dark:text-gray-400">
-                              {user.user_stats?.total_analyses || 0} analyses
+                              {user.total_analyses || 0} analyses
                             </span>
                             <span className="text-gray-600 dark:text-gray-400">
-                              {user.user_stats?.problems_solved || 0} solved
+                              {user.problems_solved || 0} solved
                             </span>
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
-                            {user.user_stats?.current_streak || 0} day streak
+                            {user.current_streak || 0} day streak
                           </div>
                         </div>
                       </td>
@@ -392,10 +379,10 @@ const AdminPanel: React.FC = () => {
             <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-full flex items-center justify-center text-white font-bold">
-                  {selectedUser.profiles?.avatar_url || selectedUser.profiles?.full_name?.[0] || selectedUser.email[0].toUpperCase()}
+                  {selectedUser.avatar_url || selectedUser.full_name?.[0] || selectedUser.email[0].toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-medium">{selectedUser.profiles?.full_name || 'Unnamed User'}</p>
+                  <p className="font-medium">{selectedUser.full_name || 'Unnamed User'}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{selectedUser.email}</p>
                 </div>
               </div>

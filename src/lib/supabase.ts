@@ -36,41 +36,6 @@ export const auth = {
     });
   },
 
-  // Admin sign in - separate function for admin authentication
-  adminSignIn: async (email: string, password: string) => {
-    try {
-      // First verify admin credentials against admin_users table
-      const { data: adminUser, error: adminError } = await supabase
-        .from('admin_users')
-        .select('id, email')
-        .eq('email', email)
-        .single();
-
-      if (adminError || !adminUser) {
-        return { data: null, error: { message: 'Invalid admin credentials' } };
-      }
-
-      // Verify password using PostgreSQL's crypt function
-      const { data: passwordCheck, error: passwordError } = await supabase
-        .rpc('verify_admin_password', {
-          admin_email: email,
-          password_input: password
-        });
-
-      if (passwordError || !passwordCheck) {
-        return { data: null, error: { message: 'Invalid admin credentials' } };
-      }
-
-      // If admin credentials are valid, sign in normally
-      return await supabase.auth.signInWithPassword({
-        email,
-        password: 'dummy' // We'll handle this differently for admin
-      });
-    } catch (error) {
-      return { data: null, error: { message: 'Admin authentication failed' } };
-    }
-  },
-
   signOut: async () => {
     return await supabase.auth.signOut();
   },
@@ -111,20 +76,53 @@ export const auth = {
 export const db = {
   // Admin functions
   verifyAdminCredentials: async (email: string, password: string) => {
-    return await supabase.rpc('verify_admin_password', {
+    const { data, error } = await supabase.rpc('verify_admin_password', {
       admin_email: email,
       password_input: password
     });
+    
+    if (error) {
+      console.error('Admin verification error:', error);
+      return false;
+    }
+    
+    return data === true;
   },
 
-  isAdminUser: async (email: string) => {
-    const { data, error } = await supabase
-      .from('admin_users')
-      .select('id')
-      .eq('email', email)
-      .single();
+  isAdminUser: async (email?: string) => {
+    const { data, error } = await supabase.rpc('is_admin', {
+      user_email: email || null
+    });
     
-    return !error && !!data;
+    if (error) {
+      console.error('Admin check error:', error);
+      return false;
+    }
+    
+    return data === true;
+  },
+
+  // Admin panel functions
+  getAdminPanelUsers: async () => {
+    const { data, error } = await supabase.rpc('get_all_users_for_admin_panel');
+    
+    if (error) {
+      throw error;
+    }
+    
+    return { data, error: null };
+  },
+
+  deleteUserAdmin: async (userId: string) => {
+    const { data, error } = await supabase.rpc('delete_user_admin', {
+      user_id_to_delete: userId
+    });
+    
+    if (error) {
+      throw error;
+    }
+    
+    return { data, error: null };
   },
 
   // Profiles
