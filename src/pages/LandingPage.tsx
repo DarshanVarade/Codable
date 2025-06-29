@@ -58,10 +58,7 @@ const LandingPage: React.FC = () => {
           </span>
         </div>
         
-        <div className="hidden md:flex items-center gap-8">
-          <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
-          <a href="#testimonials" className="text-gray-300 hover:text-white transition-colors">Testimonials</a>
-          <a href="#about" className="text-gray-300 hover:text-white transition-colors">About</a>
+        <div className="flex items-center">
           <Link
             to="/app/dashboard"
             className="px-4 py-2 bg-primary-dark rounded-lg hover:bg-primary-dark/80 transition-colors"
