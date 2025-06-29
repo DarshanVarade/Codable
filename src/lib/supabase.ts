@@ -24,7 +24,7 @@ export const auth = {
       password,
       options: {
         data: userData,
-        emailRedirectTo: `${window.location.origin}/app/dashboard`
+        emailRedirectTo: `${window.location.origin}/auth/callback`
       }
     });
   },
@@ -42,7 +42,7 @@ export const auth = {
 
   resetPassword: async (email: string) => {
     return await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`
+      redirectTo: `${window.location.origin}/auth/callback`
     });
   },
 

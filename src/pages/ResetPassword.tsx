@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Brain } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
 const ResetPassword: React.FC = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { updatePassword } = useAuth();
   const [password, setPassword] = useState('');
@@ -14,20 +14,32 @@ const ResetPassword: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isValidToken, setIsValidToken] = useState(false);
+  const [isValidSession, setIsValidSession] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
-    // Check if we have the required parameters for password reset
-    const token = searchParams.get('token');
-    const type = searchParams.get('type');
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) throw error;
+        
+        if (session) {
+          setIsValidSession(true);
+        } else {
+          toast.error('Invalid or expired reset link');
+          navigate('/', { replace: true });
+        }
+      } catch (error: any) {
+        toast.error('Invalid reset session');
+        navigate('/', { replace: true });
+      } finally {
+        setCheckingSession(false);
+      }
+    };
 
-    if (token && type === 'recovery') {
-      setIsValidToken(true);
-    } else {
-      // Invalid or missing token, redirect to landing page
-      navigate('/', { replace: true });
-    }
-  }, [searchParams, navigate]);
+    checkSession();
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +62,10 @@ const ResetPassword: React.FC = () => {
       
       toast.success('Password updated successfully!');
       
-      // Redirect to sign in page after a short delay
+      // Sign out to force re-login with new password
+      await supabase.auth.signOut();
+      
+      // Redirect to landing page after a short delay
       setTimeout(() => {
         navigate('/', { replace: true });
       }, 2000);
@@ -61,7 +76,7 @@ const ResetPassword: React.FC = () => {
     }
   };
 
-  if (!isValidToken) {
+  if (checkingSession) {
     return (
       <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
         <div className="text-center">
@@ -70,6 +85,10 @@ const ResetPassword: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  if (!isValidSession) {
+    return null; // Will redirect in useEffect
   }
 
   return (
