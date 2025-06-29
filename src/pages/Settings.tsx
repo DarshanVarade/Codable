@@ -9,7 +9,9 @@ import {
   Moon,
   Monitor,
   Camera,
-  CheckCircle
+  CheckCircle,
+  Brain,
+  Zap
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useProfile } from '../hooks/useProfile';
@@ -23,6 +25,7 @@ const Settings: React.FC = () => {
   const { user } = useAuth();
   const [defaultLanguage, setDefaultLanguage] = useState('javascript');
   const [analysisDepth, setAnalysisDepth] = useState('standard');
+  const [aiProvider, setAiProvider] = useState('gemini');
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
@@ -48,6 +51,12 @@ const Settings: React.FC = () => {
       setHasChanges(false);
     }
   }, [profile]);
+
+  // Load AI provider preference from localStorage
+  useEffect(() => {
+    const savedProvider = localStorage.getItem('aiProvider') || 'gemini';
+    setAiProvider(savedProvider);
+  }, []);
 
   // Check for changes whenever form data updates
   useEffect(() => {
@@ -234,6 +243,29 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleAiProviderChange = (newProvider: 'gemini' | 'copilotkit') => {
+    const previousProvider = aiProvider;
+    setAiProvider(newProvider);
+    localStorage.setItem('aiProvider', newProvider);
+    
+    if (previousProvider !== newProvider) {
+      const providerMessages = {
+        gemini: { message: 'Switched to Gemini 2.0 Flash 🧠', bg: '#22D3EE' },
+        copilotkit: { message: 'Switched to CopilotKit 🤖', bg: '#8B5CF6' }
+      };
+      
+      const providerInfo = providerMessages[newProvider];
+      
+      toast.success(providerInfo.message, {
+        duration: 2500,
+        style: {
+          background: providerInfo.bg,
+          color: '#FFFFFF',
+        },
+      });
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-6">
@@ -375,7 +407,7 @@ const Settings: React.FC = () => {
                   <h2 className="text-xl font-semibold mb-6">Preferences</h2>
                   
                   {/* Theme Toggle */}
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <div>
                       <h3 className="text-lg font-medium mb-3">Theme</h3>
                       <div className="grid grid-cols-3 gap-3">
@@ -397,6 +429,61 @@ const Settings: React.FC = () => {
                             <span className="text-sm font-medium">{option.label}</span>
                           </button>
                         ))}
+                      </div>
+                    </div>
+
+                    {/* AI Provider Selection */}
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">AI Assistant Provider</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { 
+                            value: 'gemini', 
+                            label: 'Gemini 2.0 Flash', 
+                            icon: Brain,
+                            description: 'Google\'s advanced AI model',
+                            color: 'from-blue-500 to-cyan-500'
+                          },
+                          { 
+                            value: 'copilotkit', 
+                            label: 'CopilotKit', 
+                            icon: Zap,
+                            description: 'Enhanced code assistance',
+                            color: 'from-purple-500 to-pink-500'
+                          },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => handleAiProviderChange(option.value as any)}
+                            className={`flex flex-col gap-3 p-4 rounded-lg border text-left transition-all ${
+                              aiProvider === option.value
+                                ? 'border-primary-dark bg-primary-dark/20'
+                                : 'border-gray-200/20 dark:border-gray-700/20 hover:border-primary-dark/50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 bg-gradient-to-br ${option.color} rounded-lg flex items-center justify-center`}>
+                                <option.icon className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <span className="font-medium">{option.label}</span>
+                                {aiProvider === option.value && (
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <CheckCircle className="w-3 h-3 text-green-500" />
+                                    <span className="text-xs text-green-600 dark:text-green-400">Active</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-xs text-gray-600 dark:text-gray-400">{option.description}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          <strong>Current:</strong> {aiProvider === 'gemini' ? 'Gemini 2.0 Flash' : 'CopilotKit'} - 
+                          This setting affects the AI assistant in the Codable AI chat.
+                        </p>
                       </div>
                     </div>
 

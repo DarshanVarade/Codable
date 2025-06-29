@@ -33,14 +33,31 @@ const CodableAI: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [aiProvider, setAiProvider] = useState<'gemini' | 'copilotkit'>('gemini');
   const [showCopilotSidebar, setShowCopilotSidebar] = useState(false);
   const { loading: geminiLoading, sendMessage: sendGeminiMessage } = useAIChat();
   const { loading: copilotLoading, generateCode, chat: copilotChat } = useCopilotKitIntegration();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  // Get AI provider from localStorage
+  const [aiProvider, setAiProvider] = useState<'gemini' | 'copilotkit'>(() => {
+    return (localStorage.getItem('aiProvider') as 'gemini' | 'copilotkit') || 'gemini';
+  });
+
   const loading = geminiLoading || copilotLoading;
+
+  // Listen for changes in localStorage
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedProvider = localStorage.getItem('aiProvider') as 'gemini' | 'copilotkit';
+      if (savedProvider && savedProvider !== aiProvider) {
+        setAiProvider(savedProvider);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [aiProvider]);
 
   // Initialize with welcome message
   React.useEffect(() => {
@@ -49,11 +66,9 @@ const CodableAI: React.FC = () => {
       role: 'assistant',
       content: `# Welcome to Codable AI! 🚀
 
-I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** and **CopilotKit**. Choose your preferred AI provider:
+I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** and **CopilotKit**. 
 
-## 🤖 **AI Providers:**
-- **Gemini 2.0 Flash**: Advanced code analysis, explanations, and generation
-- **CopilotKit**: Enhanced code completion and intelligent suggestions
+**Current AI Provider**: ${aiProvider === 'gemini' ? '**Gemini 2.0 Flash** 🧠' : '**CopilotKit** 🤖'}
 
 ## 🔧 **What I Can Do:**
 - **Debug Code**: Find and fix bugs in your code
@@ -73,12 +88,12 @@ I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** a
 
 **Just paste your code or ask any programming question to get started!** ✨
 
-**CopilotKit API Key**: \`${import.meta.env.VITE_COPILOTKIT_API_KEY ? 'Connected ✅' : 'Not configured ❌'}\``,
+**Note**: You can change your AI provider in Settings → Preferences → AI Assistant Provider`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      source: 'gemini'
+      source: aiProvider
     };
     setMessages([welcomeMessage]);
-  }, []);
+  }, [aiProvider]);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -368,40 +383,18 @@ I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** a
             Codable AI
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Your intelligent coding assistant powered by Gemini 2.0 Flash & CopilotKit
+            Your intelligent coding assistant powered by {aiProvider === 'gemini' ? 'Gemini 2.0 Flash' : 'CopilotKit'}
           </p>
         </div>
         
         <div className="flex items-center gap-3">
-          {/* AI Provider Selector */}
-          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-            <button
-              onClick={() => setAiProvider('gemini')}
-              className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                aiProvider === 'gemini'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-              }`}
-            >
-              Gemini
-            </button>
-            <button
-              onClick={() => setAiProvider('copilotkit')}
-              className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                aiProvider === 'copilotkit'
-                  ? 'bg-purple-500 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-              }`}
-            >
-              CopilotKit
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full">
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
+            aiProvider === 'copilotkit' 
+              ? 'bg-purple-500/20 text-purple-600 dark:text-purple-400' 
+              : 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
+          }`}>
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-xs font-medium text-green-600 dark:text-green-400">
-              {aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini'} Online
-            </span>
+            <span>Powered by {aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini 2.0 Flash'}</span>
           </div>
           
           <button
@@ -531,7 +524,7 @@ I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** a
           </div>
           
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-            Press Enter to send • Shift+Enter for new line • Using {aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini 2.0 Flash'}
+            Press Enter to send • Shift+Enter for new line • Using {aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini 2.0 Flash'} • Change provider in Settings
           </p>
         </div>
       </div>
