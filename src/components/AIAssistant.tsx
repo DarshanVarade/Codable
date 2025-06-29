@@ -93,7 +93,16 @@ What can I help you with?`,
   };
 
   const copyToClipboard = (content: string) => {
-    navigator.clipboard.writeText(content);
+    // Clean content by removing markdown and HTML
+    const cleanContent = content
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/```[\w]*\n([\s\S]*?)```/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^#+\s*/gm, '')
+      .trim();
+    
+    navigator.clipboard.writeText(cleanContent);
     toast.success('Copied to clipboard');
   };
 
@@ -143,8 +152,8 @@ What can I help you with?`,
                     __html: message.content
                       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                      .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre class="bg-gray-900 text-green-400 p-3 rounded mt-2 mb-2 overflow-x-auto"><code>$2</code></pre>')
-                      .replace(/`(.*?)`/g, '<code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">$1</code>')
+                      .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre class="bg-gray-900 text-green-400 p-3 rounded mt-2 mb-2 overflow-x-auto font-mono text-xs"><code>$2</code></pre>')
+                      .replace(/`([^`]+)`/g, '<code class="bg-gray-200 dark:bg-gray-700 px-1 rounded font-mono text-xs">$1</code>')
                   }}
                 />
               ) : (

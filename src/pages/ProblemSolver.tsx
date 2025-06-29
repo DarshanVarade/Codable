@@ -86,19 +86,21 @@ const ProblemSolver: React.FC = () => {
     }
   };
 
-  // Enhanced syntax highlighting for code blocks
+  // Clean code rendering without HTML artifacts
   const renderCodeBlock = (code: string, language?: string) => {
-    const lines = code.split('\n');
+    // Clean the code by removing any HTML tags that might have been added
+    const cleanCode = code.replace(/<[^>]*>/g, '').trim();
+    const lines = cleanCode.split('\n');
     
     return (
       <div className="relative">
         <div className="flex items-center justify-between bg-gray-800 px-4 py-2 rounded-t-lg">
-          <span className="text-xs text-gray-400 font-medium">
+          <span className="text-xs text-gray-400 font-medium uppercase">
             {language || 'code'}
           </span>
           <button
             onClick={() => {
-              navigator.clipboard.writeText(code);
+              navigator.clipboard.writeText(cleanCode);
               toast.success('Code copied to clipboard');
             }}
             className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1"
@@ -108,56 +110,21 @@ const ProblemSolver: React.FC = () => {
           </button>
         </div>
         <div className="bg-gray-900 p-4 rounded-b-lg overflow-x-auto">
-          <pre className="text-sm">
+          <pre className="text-sm text-green-400 font-mono">
             {lines.map((line, index) => (
               <div key={index} className="flex">
                 <span className="text-gray-500 select-none w-8 text-right mr-4 text-xs">
                   {index + 1}
                 </span>
-                <code className="flex-1" dangerouslySetInnerHTML={{ 
-                  __html: highlightSyntax(line, language) 
-                }} />
+                <code className="flex-1 whitespace-pre">
+                  {line}
+                </code>
               </div>
             ))}
           </pre>
         </div>
       </div>
     );
-  };
-
-  // Enhanced syntax highlighting function
-  const highlightSyntax = (line: string, language?: string) => {
-    let highlighted = line;
-    
-    // Keywords (blue)
-    const keywords = ['function', 'const', 'let', 'var', 'if', 'else', 'for', 'while', 'return', 'class', 'import', 'export', 'from', 'def', 'print', 'public', 'private', 'static', 'void', 'int', 'string', 'boolean', 'true', 'false', 'null', 'undefined'];
-    keywords.forEach(keyword => {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'g');
-      highlighted = highlighted.replace(regex, `<span class="text-blue-400 font-medium">${keyword}</span>`);
-    });
-    
-    // Strings (green)
-    highlighted = highlighted.replace(/(["'`])((?:\\.|(?!\1)[^\\])*?)\1/g, '<span class="text-green-400">$1$2$1</span>');
-    
-    // Numbers (orange)
-    highlighted = highlighted.replace(/\b\d+\.?\d*\b/g, '<span class="text-orange-400">$&</span>');
-    
-    // Comments (gray)
-    highlighted = highlighted.replace(/(\/\/.*$|\/\*[\s\S]*?\*\/|#.*$)/gm, '<span class="text-gray-500 italic">$1</span>');
-    
-    // Functions and methods (yellow)
-    highlighted = highlighted.replace(/(\w+)(\s*\()/g, '<span class="text-yellow-400">$1</span>$2');
-    
-    // Variables and identifiers (cyan)
-    highlighted = highlighted.replace(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b(?!\s*[:(])/g, '<span class="text-cyan-300">$1</span>');
-    
-    // Operators (purple)
-    highlighted = highlighted.replace(/([+\-*/%=<>!&|]+)/g, '<span class="text-purple-400">$1</span>');
-    
-    // Brackets and punctuation (white)
-    highlighted = highlighted.replace(/([{}[\]();,.])/g, '<span class="text-white">$1</span>');
-    
-    return highlighted;
   };
 
   return (
@@ -293,7 +260,8 @@ const ProblemSolver: React.FC = () => {
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
-                            navigator.clipboard.writeText(solution.solution_code);
+                            const cleanCode = solution.solution_code.replace(/<[^>]*>/g, '').trim();
+                            navigator.clipboard.writeText(cleanCode);
                             toast.success('Code copied to clipboard');
                           }}
                           className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors"
@@ -431,7 +399,7 @@ const ProblemSolver: React.FC = () => {
                                 <p className="text-sm mb-2">{suggestion.description}</p>
                                 {suggestion.code_example && (
                                   <div className="bg-gray-900 rounded p-2 font-mono text-xs text-green-400 overflow-x-auto">
-                                    <pre>{suggestion.code_example}</pre>
+                                    <pre>{suggestion.code_example.replace(/<[^>]*>/g, '')}</pre>
                                   </div>
                                 )}
                               </div>

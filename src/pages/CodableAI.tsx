@@ -117,7 +117,18 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
   };
 
   const copyToClipboard = (content: string) => {
-    navigator.clipboard.writeText(content);
+    // Clean content by removing HTML tags and markdown formatting for clipboard
+    const cleanContent = content
+      .replace(/<[^>]*>/g, '')
+      .replace(/```[\w]*\n/g, '')
+      .replace(/```/g, '')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/^#+\s*/gm, '')
+      .trim();
+    
+    navigator.clipboard.writeText(cleanContent);
     toast.success('Copied to clipboard! 📋');
   };
 
@@ -140,18 +151,23 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
     setInput(suggestion);
   };
 
-  // Enhanced syntax highlighting for code blocks
+  // Clean code block rendering without HTML artifacts
   const renderCodeBlock = (code: string, language?: string) => {
-    const lines = code.split('\n');
+    // Clean the code by removing any HTML tags
+    const cleanCode = code.replace(/<[^>]*>/g, '').trim();
+    const lines = cleanCode.split('\n');
     
     return (
-      <div className="relative">
+      <div className="relative my-4">
         <div className="flex items-center justify-between bg-gray-800 px-4 py-2 rounded-t-lg">
-          <span className="text-xs text-gray-400 font-medium">
+          <span className="text-xs text-gray-400 font-medium uppercase">
             {language || 'code'}
           </span>
           <button
-            onClick={() => copyToClipboard(code)}
+            onClick={() => {
+              navigator.clipboard.writeText(cleanCode);
+              toast.success('Code copied to clipboard');
+            }}
             className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1"
           >
             <Copy className="w-3 h-3" />
@@ -159,53 +175,21 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
           </button>
         </div>
         <div className="bg-gray-900 p-4 rounded-b-lg overflow-x-auto">
-          <pre className="text-sm">
+          <pre className="text-sm text-green-400 font-mono">
             {lines.map((line, index) => (
               <div key={index} className="flex">
                 <span className="text-gray-500 select-none w-8 text-right mr-4 text-xs">
                   {index + 1}
                 </span>
-                <code className="flex-1" dangerouslySetInnerHTML={{ 
-                  __html: highlightSyntax(line, language) 
-                }} />
+                <code className="flex-1 whitespace-pre">
+                  {line}
+                </code>
               </div>
             ))}
           </pre>
         </div>
       </div>
     );
-  };
-
-  // Basic syntax highlighting function
-  const highlightSyntax = (line: string, language?: string) => {
-    let highlighted = line;
-    
-    // Keywords (blue)
-    const keywords = ['function', 'const', 'let', 'var', 'if', 'else', 'for', 'while', 'return', 'class', 'import', 'export', 'from', 'def', 'print', 'public', 'private', 'static', 'void', 'int', 'string', 'boolean'];
-    keywords.forEach(keyword => {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'g');
-      highlighted = highlighted.replace(regex, `<span class="text-blue-400 font-medium">${keyword}</span>`);
-    });
-    
-    // Strings (green)
-    highlighted = highlighted.replace(/(["'`])((?:\\.|(?!\1)[^\\])*?)\1/g, '<span class="text-green-400">$1$2$1</span>');
-    
-    // Numbers (orange)
-    highlighted = highlighted.replace(/\b\d+\.?\d*\b/g, '<span class="text-orange-400">$&</span>');
-    
-    // Comments (gray)
-    highlighted = highlighted.replace(/(\/\/.*$|\/\*[\s\S]*?\*\/|#.*$)/gm, '<span class="text-gray-500 italic">$1</span>');
-    
-    // Functions (yellow)
-    highlighted = highlighted.replace(/(\w+)(\s*\()/g, '<span class="text-yellow-400">$1</span>$2');
-    
-    // Operators (purple)
-    highlighted = highlighted.replace(/([+\-*/%=<>!&|]+)/g, '<span class="text-purple-400">$1</span>');
-    
-    // Brackets (cyan)
-    highlighted = highlighted.replace(/([{}[\]()])/g, '<span class="text-cyan-400">$1</span>');
-    
-    return highlighted;
   };
 
   const renderMessage = (message: Message) => {
@@ -238,39 +222,62 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
           }`}>
             <div className="prose prose-sm max-w-none">
               {isAI ? (
-                <div 
-                  className="text-sm whitespace-pre-wrap"
-                  dangerouslySetInnerHTML={{ 
-                    __html: message.content
-                      // Headers
-                      .replace(/^# (.*$)/gm, '<h1 class="text-xl font-bold mb-3 text-gray-900 dark:text-white">$1</h1>')
-                      .replace(/^## (.*$)/gm, '<h2 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">$1</h2>')
-                      .replace(/^### (.*$)/gm, '<h3 class="text-base font-medium mb-2 text-gray-700 dark:text-gray-300">$1</h3>')
-                      // Bold and italic
-                      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900 dark:text-white">$1</strong>')
-                      .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-                      // Code blocks
-                      .replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-                        return `<div class="my-4">${renderCodeBlock(code.trim(), lang)}</div>`;
-                      })
-                      // Inline code
-                      .replace(/`([^`]+)`/g, '<code class="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-sm font-mono text-purple-600 dark:text-purple-400">$1</code>')
-                      // Lists
-                      .replace(/^- (.*$)/gm, '<li class="ml-4 mb-1">• $1</li>')
-                      // Links
-                      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
-                  }}
-                />
+                <div className="text-sm">
+                  {/* Process the content to handle code blocks and formatting */}
+                  {message.content.split(/```(\w+)?\n([\s\S]*?)```/).map((part, index) => {
+                    if (index % 3 === 0) {
+                      // Regular text content
+                      return (
+                        <div key={index} dangerouslySetInnerHTML={{ 
+                          __html: part
+                            // Headers
+                            .replace(/^# (.*$)/gm, '<h1 class="text-xl font-bold mb-3 text-gray-900 dark:text-white">$1</h1>')
+                            .replace(/^## (.*$)/gm, '<h2 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">$1</h2>')
+                            .replace(/^### (.*$)/gm, '<h3 class="text-base font-medium mb-2 text-gray-700 dark:text-gray-300">$1</h3>')
+                            // Bold and italic
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900 dark:text-white">$1</strong>')
+                            .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+                            // Inline code
+                            .replace(/`([^`]+)`/g, '<code class="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-sm font-mono text-purple-600 dark:text-purple-400">$1</code>')
+                            // Lists
+                            .replace(/^- (.*$)/gm, '<li class="ml-4 mb-1">• $1</li>')
+                            // Links
+                            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
+                        }} />
+                      );
+                    } else if (index % 3 === 1) {
+                      // Language identifier (skip)
+                      return null;
+                    } else {
+                      // Code block content
+                      const language = message.content.split(/```(\w+)?\n([\s\S]*?)```/)[index - 1];
+                      return renderCodeBlock(part, language);
+                    }
+                  })}
+                </div>
               ) : (
                 <div className="text-sm whitespace-pre-wrap">
                   {message.hasCode ? (
-                    <div dangerouslySetInnerHTML={{ 
-                      __html: message.content
-                        .replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-                          return `<div class="my-2 bg-black/20 rounded-lg p-3"><pre class="text-xs font-mono text-gray-100">${code.trim()}</pre></div>`;
-                        })
-                        .replace(/`([^`]+)`/g, '<code class="bg-black/20 px-1 py-0.5 rounded text-xs font-mono">$1</code>')
-                    }} />
+                    <div>
+                      {message.content.split(/```(\w+)?\n([\s\S]*?)```/).map((part, index) => {
+                        if (index % 3 === 0) {
+                          // Regular text
+                          return <span key={index}>{part}</span>;
+                        } else if (index % 3 === 1) {
+                          // Language (skip)
+                          return null;
+                        } else {
+                          // Code block
+                          return (
+                            <div key={index} className="my-2 bg-black/20 rounded-lg p-3">
+                              <pre className="text-xs font-mono text-gray-100 whitespace-pre-wrap">
+                                {part.replace(/<[^>]*>/g, '').trim()}
+                              </pre>
+                            </div>
+                          );
+                        }
+                      })}
+                    </div>
                   ) : (
                     message.content
                   )}
