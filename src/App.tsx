@@ -12,7 +12,7 @@ import ResetPassword from './pages/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import { ThemeProvider } from './context/ThemeContext';
-import { supabase } from './lib/supabase';
+import { supabase, auth } from './lib/supabase';
 import toast from 'react-hot-toast';
 
 // Component to handle email verification and magic link authentication
@@ -77,8 +77,37 @@ const AuthHandler: React.FC = () => {
             throw sessionError;
           }
           
-          console.log('Magic link authentication successful');
-          toast.success('Successfully signed in with magic link!');
+          // Check if this is a new user signup (check for pending user data)
+          const pendingUserData = localStorage.getItem('pendingUserData');
+          if (pendingUserData) {
+            try {
+              const userData = JSON.parse(pendingUserData);
+              console.log('Found pending user data, creating account with:', userData);
+              
+              // Create the account with the stored data
+              const { error: signUpError } = await auth.signUp(userData.email, userData.password, {
+                full_name: userData.full_name
+              });
+              
+              if (signUpError && !signUpError.message.includes('User already registered')) {
+                console.error('Error creating account:', signUpError);
+                throw signUpError;
+              }
+              
+              // Clear the pending data
+              localStorage.removeItem('pendingUserData');
+              
+              toast.success('Account created successfully! Welcome to Codable!');
+            } catch (error: any) {
+              console.error('Error processing pending signup:', error);
+              // Continue with normal magic link flow even if signup fails
+              toast.success('Successfully signed in with magic link!');
+            }
+          } else {
+            console.log('Magic link authentication successful for existing user');
+            toast.success('Successfully signed in with magic link!');
+          }
+          
           navigate('/app/dashboard', { replace: true });
           return;
         } catch (error: any) {
