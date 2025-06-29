@@ -32,7 +32,8 @@ export const useUserStats = () => {
       setStats({
         ...data,
         current_streak: currentStreak,
-        total_time_spent_minutes: totalTimeSpent
+        // Use time_saved_minutes from database, but also provide calculated total time
+        calculated_total_time: totalTimeSpent
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -140,14 +141,12 @@ export const useUserStats = () => {
     if (!user) return;
 
     try {
-      // Recalculate streak and time when updating
+      // Recalculate streak when updating
       const currentStreak = await calculateCurrentStreak();
-      const totalTimeSpent = await calculateTotalTimeSpent();
       
       const updatedStats = {
         ...updates,
         current_streak: currentStreak,
-        total_time_spent_minutes: totalTimeSpent,
         last_activity: new Date().toISOString()
       };
       
