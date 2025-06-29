@@ -101,7 +101,7 @@ const Footer: React.FC = () => {
                       className="px-3 py-1 bg-gray-800/50 border border-gray-700/50 rounded-full text-xs text-gray-300 hover:bg-gray-700/50 transition-colors"
                     >
                       {tech}
-                    </span>
+                    </motion.span>
                   ))}
                 </div>
               </div>
@@ -267,7 +267,7 @@ const Footer: React.FC = () => {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </footer>
   );
