@@ -35,12 +35,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           drag
           dragConstraints={{
             left: 0,
-            right: window.innerWidth - 80,
+            right: typeof window !== 'undefined' ? window.innerWidth - 80 : 0,
             top: 0,
-            bottom: window.innerHeight - 80,
+            bottom: typeof window !== 'undefined' ? window.innerHeight - 80 : 0,
           }}
-          initial={{ x: window.innerWidth - 100, y: window.innerHeight - 150 }}
-          animate={{ x: aiPosition.x || window.innerWidth - 100, y: aiPosition.y || window.innerHeight - 150 }}
+          initial={{ 
+            x: typeof window !== 'undefined' ? window.innerWidth - 100 : 0, 
+            y: typeof window !== 'undefined' ? window.innerHeight - 150 : 0 
+          }}
+          animate={{ 
+            x: aiPosition.x || (typeof window !== 'undefined' ? window.innerWidth - 100 : 0), 
+            y: aiPosition.y || (typeof window !== 'undefined' ? window.innerHeight - 150 : 0) 
+          }}
           onDragEnd={(event, info) => {
             setAiPosition({ x: info.point.x, y: info.point.y });
           }}
@@ -52,9 +58,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             onClick={() => setAiOpen(!aiOpen)}
             className="w-16 h-16 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center text-white"
           >
-            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
+            <Brain className="w-8 h-8" />
           </button>
         </motion.div>
       )}

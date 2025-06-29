@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   User, 
-  Bell, 
   Palette, 
   Save,
   X,
@@ -25,16 +24,28 @@ const Settings: React.FC = () => {
   const [analysisDepth, setAnalysisDepth] = useState('standard');
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: profile?.full_name || '',
-    username: profile?.username || '',
-    website: profile?.website || '',
-    location: profile?.location || '',
-    bio: profile?.bio || ''
+    full_name: '',
+    username: '',
+    website: '',
+    location: '',
+    bio: ''
   });
+
+  // Update form data when profile loads
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        full_name: profile.full_name || '',
+        username: profile.username || '',
+        website: profile.website || '',
+        location: profile.location || '',
+        bio: profile.bio || ''
+      });
+    }
+  }, [profile]);
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'preferences', label: 'Preferences', icon: Palette },
   ];
 
@@ -64,7 +75,7 @@ const Settings: React.FC = () => {
       if (error) {
         toast.error('Failed to update profile');
       } else {
-        toast.success('Profile updated successfully!');
+        toast.success('Changes applied successfully!');
       }
     } catch (error) {
       toast.error('Failed to update profile');
@@ -308,38 +319,23 @@ const Settings: React.FC = () => {
               </div>
             )}
 
-            {/* Notifications tab */}
-            {activeTab === 'notifications' && (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Bell className="w-8 h-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">Notifications</h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Notification settings coming soon...
-                </p>
-              </div>
-            )}
-
             {/* Action Buttons */}
-            {(activeTab === 'profile' || activeTab === 'preferences') && (
-              <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200/20 dark:border-gray-700/20 mt-8">
-                <button
-                  onClick={handleCancel}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="flex items-center gap-2 px-6 py-2 bg-primary-dark text-white rounded-lg hover:bg-primary-dark/80 transition-colors"
-                >
-                  <Save className="w-4 h-4" />
-                  Save Changes
-                </button>
-              </div>
-            )}
+            <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200/20 dark:border-gray-700/20 mt-8">
+              <button
+                onClick={handleCancel}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-2 px-6 py-2 bg-primary-dark text-white rounded-lg hover:bg-primary-dark/80 transition-colors"
+              >
+                <Save className="w-4 h-4" />
+                Save Changes
+              </button>
+            </div>
           </motion.div>
         </div>
       </div>

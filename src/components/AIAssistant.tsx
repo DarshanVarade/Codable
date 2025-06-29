@@ -30,7 +30,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onClose }) => {
     const welcomeMessage: Message = {
       id: 'welcome',
       role: 'assistant',
-      content: `Hi! I'm **CodeOrbit AI**, powered by **Gemini 2.0 Flash**. I'm your coding assistant.
+      content: `Hi! I'm **Codable AI**, powered by **Gemini 2.0 Flash**. I'm your coding assistant.
 
 **Quick help:**
 • Code explanations
@@ -126,7 +126,7 @@ What can I help you with?`,
                 <Brain className="w-3 h-3 text-white" />
               </div>
               <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                CodeOrbit AI
+                Codable AI
               </span>
             </div>
           )}
@@ -184,7 +184,7 @@ What can I help you with?`,
             <Brain className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold">CodeOrbit AI</h3>
+            <h3 className="font-semibold">Codable AI</h3>
             <p className="text-xs text-green-500 flex items-center gap-1">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               Gemini 2.0 Flash
@@ -215,7 +215,7 @@ What can I help you with?`,
                   <Brain className="w-3 h-3 text-white" />
                 </div>
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                  CodeOrbit AI
+                  Codable AI
                 </span>
               </div>
               <div className="bg-gray-100/80 dark:bg-gray-800/80 rounded-lg p-3">
