@@ -232,7 +232,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     switch (step) {
       case 'signin': return 'Welcome Back';
       case 'signup': return 'Create Account';
-      case 'forgot': return 'Magic Link';
+      case 'forgot': return 'Forgot Password';
       case 'reset': return 'New Password';
       case 'verify': return 'Check Email';
       case 'instructions': return 'Check Email';
@@ -306,19 +306,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 text-sm">
+      {/* Side by side buttons */}
+      <div className="grid grid-cols-2 gap-3 text-sm">
         <button
           type="button"
           onClick={() => setStep('forgot')}
-          className="text-primary-dark hover:underline flex items-center gap-2 justify-center"
+          className="text-primary-dark hover:underline flex items-center gap-2 justify-center py-2"
         >
-          <Zap className="w-4 h-4" />
-          Magic Link Sign In
+          <Lock className="w-4 h-4" />
+          Forgot Password
         </button>
         <button
           type="button"
           onClick={() => setStep('admin')}
-          className="text-yellow-400 hover:underline flex items-center gap-2 justify-center"
+          className="text-yellow-400 hover:underline flex items-center gap-2 justify-center py-2"
         >
           <Crown className="w-4 h-4" />
           Admin Login
@@ -558,11 +559,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       
       <div className="text-center mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <Zap className="w-5 h-5 text-blue-400" />
-          <span className="font-semibold text-blue-100">Magic Link Sign In</span>
+          <Lock className="w-5 h-5 text-blue-400" />
+          <span className="font-semibold text-blue-100">Password Reset</span>
         </div>
         <p className="text-sm text-blue-200">
-          Enter your email for instant sign in - no password required!
+          Enter your email and we'll send you a magic link to sign in.
         </p>
       </div>
 
@@ -592,25 +593,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         {loading ? (
           <div className="flex items-center justify-center gap-2">
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Sending Magic Link...
+            Sending Reset Link...
           </div>
         ) : (
           <div className="flex items-center justify-center gap-2">
-            <Zap className="w-5 h-5" />
-            Send Magic Link
+            <Lock className="w-5 h-5" />
+            Send Reset Link
           </div>
         )}
       </button>
 
       <div className="text-center">
         <p className="text-gray-300">
-          Prefer to use a password?
+          Remember your password?
           <button
             type="button"
             onClick={() => setStep('signin')}
             className="ml-2 text-primary-dark hover:underline font-medium"
           >
-            Sign In with Password
+            Sign In
           </button>
         </p>
       </div>
@@ -669,19 +670,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const renderMagicLinkSent = () => (
     <div className="text-center space-y-6">
       <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto">
-        <Zap className="w-8 h-8 text-blue-400" />
+        <CheckCircle className="w-8 h-8 text-blue-400" />
       </div>
       
       <div>
-        <h3 className="text-lg font-semibold mb-2 text-white">Magic Link Sent!</h3>
+        <h3 className="text-lg font-semibold mb-2 text-white">Reset Link Sent!</h3>
         <p className="text-gray-300 mb-4">
-          We've sent a magic link to <strong className="text-white break-all">{email}</strong>
+          We've sent a password reset link to <strong className="text-white break-all">{email}</strong>
         </p>
         <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4 text-left">
           <h4 className="font-medium text-blue-100 mb-2">Next Steps:</h4>
           <ol className="text-sm text-blue-200 space-y-1 list-decimal list-inside">
             <li>Check your email inbox</li>
-            <li>Click the magic link</li>
+            <li>Click the reset link</li>
             <li>You'll be automatically signed in</li>
           </ol>
         </div>
@@ -701,7 +702,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           ) : (
             <div className="flex items-center justify-center gap-2">
               <RefreshCw className="w-4 h-4" />
-              Resend Magic Link
+              Resend Reset Link
             </div>
           )}
         </button>
