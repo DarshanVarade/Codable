@@ -65,7 +65,7 @@ const CodableAI: React.FC = () => {
     };
 
     window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('storage', handleCustomStorageChange);
+    window.addEventListener('aiProviderChanged', handleCustomStorageChange);
     
     // Also check for changes periodically
     const interval = setInterval(() => {
@@ -77,7 +77,7 @@ const CodableAI: React.FC = () => {
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('storage', handleCustomStorageChange);
+      window.removeEventListener('aiProviderChanged', handleCustomStorageChange);
       clearInterval(interval);
     };
   }, [aiProvider]);
@@ -182,7 +182,7 @@ I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** a
 
 ${aiProvider === 'copilotkit' 
   ? '**CopilotKit Notice**: This integration requires a backend proxy for full functionality. Try switching to Gemini using the AI provider button in the navbar for immediate assistance!' 
-  : 'Please try again or check your connection.'}`,
+  : 'Please check your Gemini API key in the .env file and try again.'}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         source: aiProvider
       };
@@ -205,34 +205,24 @@ ${aiProvider === 'copilotkit'
   };
 
   const copyToClipboard = (content: string) => {
-    // Clean content by removing HTML tags and markdown formatting for clipboard
+    // Clean content by removing markdown and HTML
     const cleanContent = content
-      .replace(/<[^>]*>/g, '')
-      .replace(/```[\w]*\n/g, '')
-      .replace(/```/g, '')
-      .replace(/`([^`]+)`/g, '$1')
       .replace(/\*\*(.*?)\*\*/g, '$1')
       .replace(/\*(.*?)\*/g, '$1')
+      .replace(/```[\w]*\n([\s\S]*?)```/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
       .replace(/^#+\s*/gm, '')
       .trim();
     
     navigator.clipboard.writeText(cleanContent);
-    toast.success('Copied to clipboard! 📋');
-  };
-
-  const clearChat = () => {
-    setMessages([]);
-    setCurrentConversationId(null);
-    toast.success('Chat cleared! 🧹');
+    toast.success('Copied to clipboard');
   };
 
   const suggestionChips = [
-    "Debug this JavaScript function",
-    "Explain this Python code",
-    "Generate a React component",
-    "Optimize this algorithm",
-    "Review my code quality",
-    "Best practices for APIs"
+    "Explain this code",
+    "Find bugs",
+    "Optimize code",
+    "Best practices"
   ];
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -460,7 +450,11 @@ ${aiProvider === 'copilotkit'
           </button>
           
           <button
-            onClick={clearChat}
+            onClick={() => {
+              setMessages([]);
+              setCurrentConversationId(null);
+              toast.success('Chat cleared! 🧹');
+            }}
             className="flex items-center gap-2 px-3 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
