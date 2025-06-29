@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import CodeAnalyzer from './pages/CodeAnalyzer';
 import ProblemSolver from './pages/ProblemSolver';
+import CodableAI from './pages/CodableAI';
 import Settings from './pages/Settings';
 import AdminPanel from './pages/AdminPanel';
 import ResetPassword from './pages/ResetPassword';
@@ -259,6 +260,7 @@ function App() {
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="analyzer" element={<CodeAnalyzer />} />
                     <Route path="solver" element={<ProblemSolver />} />
+                    <Route path="ai" element={<CodableAI />} />
                     <Route path="settings" element={<Settings />} />
                   </Routes>
                 </Layout>

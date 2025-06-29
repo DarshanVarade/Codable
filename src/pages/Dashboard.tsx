@@ -174,12 +174,12 @@ const Dashboard: React.FC = () => {
 
   const getIntensityColor = (intensity: number) => {
     switch (intensity) {
-      case 0: return 'bg-gray-100 dark:bg-gray-800';
-      case 1: return 'bg-green-200 dark:bg-green-900';
-      case 2: return 'bg-green-300 dark:bg-green-700';
-      case 3: return 'bg-green-400 dark:bg-green-600';
-      case 4: return 'bg-green-500 dark:bg-green-500';
-      default: return 'bg-gray-100 dark:bg-gray-800';
+      case 0: return 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+      case 1: return 'bg-green-200 dark:bg-green-900 border-green-300 dark:border-green-800';
+      case 2: return 'bg-green-300 dark:bg-green-700 border-green-400 dark:border-green-600';
+      case 3: return 'bg-green-400 dark:bg-green-600 border-green-500 dark:border-green-500';
+      case 4: return 'bg-green-500 dark:bg-green-500 border-green-600 dark:border-green-400';
+      default: return 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -379,19 +379,19 @@ const Dashboard: React.FC = () => {
                   return (
                     <div
                       key={dayIndex}
-                      className={`h-3 rounded-sm border transition-all cursor-pointer relative ${
-                        day ? getIntensityColor(day.intensity) : 'bg-gray-100 dark:bg-gray-800'
+                      className={`h-3 rounded-sm transition-all cursor-pointer relative ${
+                        day ? getIntensityColor(day.intensity) : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                       } ${
                         isToday 
-                          ? 'ring-2 ring-blue-500 border-blue-500 shadow-lg scale-110 z-10' 
-                          : 'border-gray-200 dark:border-gray-600 hover:ring-2 hover:ring-gray-400'
+                          ? 'ring-2 ring-blue-500 shadow-lg scale-110 z-10 border-blue-500' 
+                          : 'hover:ring-2 hover:ring-gray-400'
                       }`}
                       title={day ? `${day.date.toLocaleDateString()}: ${day.count} contributions${isToday ? ' (Today)' : ''}` : ''}
                       style={{ aspectRatio: '1' }}
                     >
-                      {/* Today indicator */}
+                      {/* Today indicator dot */}
                       {isToday && (
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse border border-white dark:border-gray-800" />
                       )}
                     </div>
                   );
@@ -419,7 +419,7 @@ const Dashboard: React.FC = () => {
               {[0, 1, 2, 3, 4].map((intensity) => (
                 <div
                   key={intensity}
-                  className={`w-3 h-3 rounded-sm border border-gray-200 dark:border-gray-600 ${getIntensityColor(intensity)}`}
+                  className={`w-3 h-3 rounded-sm ${getIntensityColor(intensity)}`}
                 />
               ))}
             </div>

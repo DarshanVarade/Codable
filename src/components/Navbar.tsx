@@ -9,7 +9,8 @@ import {
   User,
   Menu,
   X,
-  Crown
+  Crown,
+  MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
@@ -29,6 +30,7 @@ const Navbar: React.FC = () => {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/app/dashboard' },
     { icon: Code, label: 'Code Analyzer', path: '/app/analyzer' },
     { icon: HelpCircle, label: 'Problem Solver', path: '/app/solver' },
+    { icon: MessageCircle, label: 'Codable AI', path: '/app/ai' },
   ];
 
   // Add admin menu item if user is admin
