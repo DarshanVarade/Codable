@@ -201,7 +201,7 @@ export const db = {
       .from('user_stats')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
   },
 
   updateUserStats: async (userId: string, updates: any) => {

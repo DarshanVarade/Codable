@@ -23,6 +23,29 @@ export const useUserStats = () => {
       const { data, error } = await db.getUserStats(user.id);
       if (error) throw error;
       
+      // If no stats exist for this user, create default stats
+      if (!data) {
+        const defaultStats = {
+          user_id: user.id,
+          total_analyses: 0,
+          problems_solved: 0,
+          current_streak: 0,
+          longest_streak: 0,
+          time_saved_minutes: 0,
+          total_points: 0,
+          last_activity: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        // Create the initial stats entry
+        const { error: createError } = await db.updateUserStats(user.id, defaultStats);
+        if (createError) throw createError;
+        
+        setStats(defaultStats);
+        setLoading(false);
+        return;
+      }
+      
       // Calculate accurate current streak
       const currentStreak = await calculateCurrentStreak();
       
