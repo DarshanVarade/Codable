@@ -19,7 +19,7 @@ const Footer: React.FC = () => {
   const creators = [
     {
       name: 'Darshan Varade',
-      role: 'Lead Developer',
+      role: 'Full Stack Developer',
       github: 'https://github.com/DarshanVarade/',
       username: 'DarshanVarade',
       avatar: 'DV',
