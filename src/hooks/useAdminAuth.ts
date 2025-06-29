@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
-
-const ADMIN_EMAIL = 'vampire@gmail.com';
+import { db } from '../lib/supabase';
 
 export const useAdminAuth = () => {
   const { user, loading } = useAuth();
@@ -9,11 +8,22 @@ export const useAdminAuth = () => {
   const [adminLoading, setAdminLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading) {
-      const adminStatus = user?.email === ADMIN_EMAIL;
-      setIsAdmin(adminStatus);
+    const checkAdminStatus = async () => {
+      if (!loading && user?.email) {
+        try {
+          const adminStatus = await db.isAdminUser(user.email);
+          setIsAdmin(adminStatus);
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
       setAdminLoading(false);
-    }
+    };
+
+    checkAdminStatus();
   }, [user, loading]);
 
   return {
