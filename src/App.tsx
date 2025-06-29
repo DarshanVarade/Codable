@@ -99,10 +99,6 @@ const AuthHandler: React.FC = () => {
               localStorage.removeItem('pendingSignupData');
               
               toast.success('Account created successfully! Welcome to Codable!');
-              
-              // Redirect to welcome guide for new users
-              navigate('/app/welcome', { replace: true });
-              return;
             } catch (error: any) {
               console.error('Error processing pending signup:', error);
               // Continue with normal magic link flow even if signup fails
@@ -113,6 +109,7 @@ const AuthHandler: React.FC = () => {
             toast.success('Successfully signed in with magic link!');
           }
           
+          // Always redirect to dashboard for magic link authentication
           navigate('/app/dashboard', { replace: true });
           return;
         } catch (error: any) {
