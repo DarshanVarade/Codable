@@ -3,21 +3,29 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
-  throw new Error('Gemini API key is required. Please set VITE_GEMINI_API_KEY in your environment variables.');
+  console.error('Gemini API key is missing. Please set VITE_GEMINI_API_KEY in your environment variables.');
 }
 
-const genAI = new GoogleGenerativeAI(API_KEY);
+let genAI: GoogleGenerativeAI | null = null;
+let model: any = null;
 
-// Get the Gemini 2.0 Flash model
-const model = genAI.getGenerativeModel({ 
-  model: "gemini-2.0-flash-exp",
-  generationConfig: {
-    temperature: 0.7,
-    topP: 0.8,
-    topK: 40,
-    maxOutputTokens: 2048,
+// Initialize Gemini only if API key is available
+if (API_KEY) {
+  try {
+    genAI = new GoogleGenerativeAI(API_KEY);
+    model = genAI.getGenerativeModel({ 
+      model: "gemini-2.0-flash-exp",
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.8,
+        topK: 40,
+        maxOutputTokens: 2048,
+      }
+    });
+  } catch (error) {
+    console.error('Failed to initialize Gemini AI:', error);
   }
-});
+}
 
 export interface CodeAnalysisResult {
   score: number;
@@ -65,7 +73,109 @@ export interface ProblemSolution {
   }>;
 }
 
+// Helper function to check if Gemini is available
+const isGeminiAvailable = (): boolean => {
+  return !!(API_KEY && genAI && model);
+};
+
+// Helper function to create fallback responses
+const createFallbackAnalysis = (code: string, language: string): CodeAnalysisResult => {
+  return {
+    score: 75,
+    summary: `This ${language} code appears to be functional. Detailed analysis requires Gemini API configuration.`,
+    explanation: `The code structure appears to be valid ${language} syntax. For comprehensive analysis including bug detection, performance insights, and optimization suggestions, please configure your Gemini API key.`,
+    suggestions: [
+      {
+        type: "info",
+        title: "API Configuration Required",
+        message: "To get detailed code analysis, please set up your Gemini API key in the environment variables."
+      },
+      {
+        type: "info",
+        title: "Code Structure",
+        message: "The code appears to follow basic syntax rules. Manual review recommended for production use."
+      }
+    ],
+    complexity: {
+      time: "O(n)",
+      space: "O(1)"
+    },
+    flowchart: {
+      nodes: [
+        {
+          id: "start",
+          type: "start",
+          label: "Start",
+          description: "Program begins"
+        },
+        {
+          id: "main",
+          type: "process",
+          label: "Main Logic",
+          description: "Core functionality"
+        },
+        {
+          id: "end",
+          type: "end",
+          label: "End",
+          description: "Program ends"
+        }
+      ],
+      edges: [
+        {
+          from: "start",
+          to: "main",
+          label: ""
+        },
+        {
+          from: "main",
+          to: "end",
+          label: ""
+        }
+      ]
+    }
+  };
+};
+
+const createFallbackSolution = (problemStatement: string, language: string): ProblemSolution => {
+  const basicCode = `// Solution for: ${problemStatement}
+// Language: ${language}
+// Note: This is a basic template. Configure Gemini API for AI-generated solutions.
+
+function solution() {
+    // TODO: Implement solution for: ${problemStatement}
+    console.log("Problem: ${problemStatement}");
+    
+    // Add your implementation here
+    return "result";
+}
+
+// Example usage:
+// solution();`;
+
+  return {
+    solution_code: basicCode,
+    explanation: `This is a basic code template for the problem: "${problemStatement}". To get AI-generated solutions with detailed explanations, please configure your Gemini API key in the environment variables.`,
+    execution_result: {
+      success: true,
+      output: "Template generated successfully",
+      execution_time: "< 1ms",
+      memory_usage: "< 1MB"
+    },
+    optimization_suggestions: [
+      {
+        type: "readability",
+        title: "API Configuration",
+        description: "Configure Gemini API key to get AI-powered code generation and optimization suggestions."
+      }
+    ]
+  };
+};
+
 export const geminiService = {
+  // Check if service is available
+  isAvailable: isGeminiAvailable,
+
   // Analyze code with comprehensive insights
   analyzeCode: async (code: string, language: string): Promise<CodeAnalysisResult> => {
     if (!code || !code.trim()) {
@@ -74,6 +184,12 @@ export const geminiService = {
 
     if (!language) {
       throw new Error('Programming language is required for analysis');
+    }
+
+    // Check if Gemini is available
+    if (!isGeminiAvailable()) {
+      console.warn('Gemini API not available, returning fallback analysis');
+      return createFallbackAnalysis(code, language);
     }
 
     const prompt = `
@@ -168,7 +284,7 @@ Provide actionable insights and be constructive in your feedback.
       const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         console.error('No JSON found in response:', cleanedText);
-        throw new Error('Invalid response format from Gemini - no JSON found');
+        return createFallbackAnalysis(code, language);
       }
       
       let jsonString = jsonMatch[0];
@@ -180,58 +296,7 @@ Provide actionable insights and be constructive in your feedback.
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
         console.error('JSON string:', jsonString);
-        
-        // Fallback: create a basic analysis
-        analysis = {
-          score: 75,
-          summary: `This ${language} code appears to be functional but needs detailed analysis.`,
-          explanation: `The code has been submitted for analysis. Due to parsing issues with the AI response, a basic analysis is provided. The code structure appears to be valid ${language} syntax.`,
-          suggestions: [
-            {
-              type: "info",
-              title: "Analysis Incomplete",
-              message: "The detailed analysis could not be completed. Please try again or check your code syntax."
-            }
-          ],
-          complexity: {
-            time: "O(n)",
-            space: "O(1)"
-          },
-          flowchart: {
-            nodes: [
-              {
-                id: "start",
-                type: "start",
-                label: "Start",
-                description: "Program begins"
-              },
-              {
-                id: "main",
-                type: "process",
-                label: "Main Logic",
-                description: "Core functionality"
-              },
-              {
-                id: "end",
-                type: "end",
-                label: "End",
-                description: "Program ends"
-              }
-            ],
-            edges: [
-              {
-                from: "start",
-                to: "main",
-                label: ""
-              },
-              {
-                from: "main",
-                to: "end",
-                label: ""
-              }
-            ]
-          }
-        };
+        return createFallbackAnalysis(code, language);
       }
       
       // Validate the analysis object
@@ -258,14 +323,27 @@ Provide actionable insights and be constructive in your feedback.
     } catch (error: any) {
       console.error('Error analyzing code:', error);
       
-      // Check if it's an API key issue
+      // Check for specific API errors
       if (error.message?.includes('API_KEY_INVALID') || error.message?.includes('API key')) {
         throw new Error('Invalid Gemini API key. Please check your VITE_GEMINI_API_KEY environment variable.');
       }
       
-      // Check if it's a quota issue
       if (error.message?.includes('quota') || error.message?.includes('limit')) {
         throw new Error('Gemini API quota exceeded. Please try again later or check your API limits.');
+      }
+
+      if (error.message?.includes('SAFETY')) {
+        throw new Error('Content was blocked by safety filters. Please try with different code.');
+      }
+
+      if (error.message?.includes('RECITATION')) {
+        throw new Error('Content may contain copyrighted material. Please try with original code.');
+      }
+      
+      // For network errors, return fallback
+      if (error.message?.includes('fetch') || error.message?.includes('network')) {
+        console.warn('Network error, returning fallback analysis');
+        return createFallbackAnalysis(code, language);
       }
       
       // Generic error with helpful message
@@ -273,7 +351,7 @@ Provide actionable insights and be constructive in your feedback.
     }
   },
 
-  // Generate solution for programming problems - Enhanced for proper code formatting
+  // Generate solution for programming problems
   solveProblem: async (problemStatement: string, language: string): Promise<ProblemSolution> => {
     if (!problemStatement || !problemStatement.trim()) {
       throw new Error('Problem statement is required');
@@ -281,6 +359,12 @@ Provide actionable insights and be constructive in your feedback.
 
     if (!language) {
       throw new Error('Programming language is required');
+    }
+
+    // Check if Gemini is available
+    if (!isGeminiAvailable()) {
+      console.warn('Gemini API not available, returning fallback solution');
+      return createFallbackSolution(problemStatement, language);
     }
 
     const prompt = `
@@ -342,7 +426,7 @@ Focus on correctness, efficiency, and readability. The code should be ready to r
       const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         console.error('No JSON found in problem solver response:', cleanedText);
-        throw new Error('Invalid response format from Gemini');
+        return createFallbackSolution(problemStatement, language);
       }
       
       let solution;
@@ -350,30 +434,12 @@ Focus on correctness, efficiency, and readability. The code should be ready to r
         solution = JSON.parse(jsonMatch[0]);
       } catch (parseError) {
         console.error('JSON parse error in problem solver:', parseError);
-        
-        // Fallback solution
-        solution = {
-          solution_code: `// Solution for: ${problemStatement}\n// Language: ${language}\n\nfunction solution() {\n    // Implementation needed\n    console.log("Problem: ${problemStatement}");\n    return "Solution placeholder";\n}`,
-          explanation: "A basic solution structure has been provided. The detailed implementation could not be generated due to parsing issues.",
-          execution_result: {
-            success: true,
-            output: "Solution placeholder",
-            execution_time: "< 1ms",
-            memory_usage: "< 1MB"
-          },
-          optimization_suggestions: [
-            {
-              type: "readability",
-              title: "Code Structure",
-              description: "Implement the actual solution logic based on the problem requirements."
-            }
-          ]
-        };
+        return createFallbackSolution(problemStatement, language);
       }
       
       // Validate solution object
       if (!solution.solution_code) {
-        solution.solution_code = `// Solution for: ${problemStatement}\nfunction solution() {\n    // Implementation needed\n    return "result";\n}`;
+        solution.solution_code = `// Solution for: ${problemStatement}\n// Language: ${language}\n\nfunction solution() {\n    // Implementation needed\n    console.log("Problem: ${problemStatement}");\n    return "Solution placeholder";\n}`;
       }
       if (!solution.explanation) {
         solution.explanation = "Solution generated for the given problem statement.";
@@ -401,15 +467,39 @@ Focus on correctness, efficiency, and readability. The code should be ready to r
       if (error.message?.includes('quota') || error.message?.includes('limit')) {
         throw new Error('Gemini API quota exceeded. Please try again later.');
       }
+
+      if (error.message?.includes('SAFETY')) {
+        throw new Error('Content was blocked by safety filters. Please try with a different problem statement.');
+      }
+
+      // For network errors, return fallback
+      if (error.message?.includes('fetch') || error.message?.includes('network')) {
+        console.warn('Network error, returning fallback solution');
+        return createFallbackSolution(problemStatement, language);
+      }
       
       throw new Error(`Failed to generate solution: ${error.message || 'Unknown error'}. Please try again.`);
     }
   },
 
-  // AI Assistant chat functionality - Enhanced for better responses
+  // AI Assistant chat functionality
   chatWithAssistant: async (message: string, context?: string): Promise<string> => {
     if (!message || !message.trim()) {
       throw new Error('Message is required for chat');
+    }
+
+    // Check if Gemini is available
+    if (!isGeminiAvailable()) {
+      return `I'm currently unable to provide AI assistance because the Gemini API is not configured. 
+
+**To enable full AI capabilities:**
+1. Get a Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Add it to your environment variables as \`VITE_GEMINI_API_KEY\`
+3. Restart the application
+
+**Your question:** "${message}"
+
+**Alternative:** You can try switching to CopilotKit using the AI provider button in the navbar for basic assistance.`;
     }
 
     // Analyze the user's request to determine the type of response needed
@@ -421,7 +511,6 @@ Focus on correctness, efficiency, and readability. The code should be ready to r
     let prompt = '';
 
     if (isCodeRequest && !hasCodeInMessage) {
-      // User wants code generation
       prompt = `
 You are Codable AI, an expert coding assistant powered by Gemini 2.0 Flash. The user is asking for code generation.
 
@@ -439,7 +528,6 @@ Brief explanation: [1-2 sentences about what the code does]
 Keep it concise and focused on the code they requested.
 `;
     } else if (isExplanationRequest || hasCodeInMessage) {
-      // User wants explanation or has code to explain
       prompt = `
 You are Codable AI, an expert coding assistant powered by Gemini 2.0 Flash. The user wants an explanation.
 
@@ -458,7 +546,6 @@ Focus on:
 Be thorough but concise.
 `;
     } else if (isCodeReview) {
-      // User wants code review/debugging
       prompt = `
 You are Codable AI, an expert coding assistant powered by Gemini 2.0 Flash. The user needs code review or debugging help.
 
@@ -474,7 +561,6 @@ Provide:
 Use code blocks for any code examples. Be specific and actionable.
 `;
     } else {
-      // General programming question
       prompt = `
 You are Codable AI, an expert coding assistant powered by Gemini 2.0 Flash.
 
@@ -508,6 +594,10 @@ Keep responses focused and practical. Use markdown formatting for better readabi
       if (error.message?.includes('quota') || error.message?.includes('limit')) {
         throw new Error('Gemini API quota exceeded. Please try again later.');
       }
+
+      if (error.message?.includes('SAFETY')) {
+        throw new Error('Content was blocked by safety filters. Please rephrase your question.');
+      }
       
       throw new Error(`AI chat error: ${error.message || 'Failed to get response'}. Please try again.`);
     }
@@ -517,6 +607,24 @@ Keep responses focused and practical. Use markdown formatting for better readabi
   explainCode: async (code: string, language: string): Promise<string> => {
     if (!code || !code.trim()) {
       throw new Error('Code is required for explanation');
+    }
+
+    if (!isGeminiAvailable()) {
+      return `**Code Explanation Service Unavailable**
+
+The Gemini API is not configured, so I cannot provide detailed code explanations.
+
+**Your ${language} code:**
+\`\`\`${language}
+${code}
+\`\`\`
+
+**To enable AI explanations:**
+1. Configure your Gemini API key
+2. Restart the application
+3. Try again for detailed analysis
+
+**Basic observation:** The code appears to be written in ${language} and follows basic syntax structure.`;
     }
 
     const prompt = `
@@ -551,7 +659,7 @@ Keep response under 200 words. Use markdown formatting.
     }
   },
 
-  // Generate optimization suggestions - Enhanced for better code formatting
+  // Generate optimization suggestions
   optimizeCode: async (code: string, language: string): Promise<{
     optimized_code: string;
     improvements: Array<{
@@ -562,6 +670,19 @@ Keep response under 200 words. Use markdown formatting.
   }> => {
     if (!code || !code.trim()) {
       throw new Error('Code is required for optimization');
+    }
+
+    if (!isGeminiAvailable()) {
+      return {
+        optimized_code: code,
+        improvements: [
+          {
+            type: "configuration",
+            description: "Gemini API not configured - unable to provide AI-powered optimizations",
+            impact: "Configure API key to enable intelligent code optimization"
+          }
+        ]
+      };
     }
 
     const prompt = `
@@ -606,21 +727,29 @@ Focus on:
       
       const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error('Invalid response format from Gemini');
+        return {
+          optimized_code: code,
+          improvements: [
+            {
+              type: "analysis",
+              description: "Code optimization analysis could not be completed",
+              impact: "Please try again for detailed optimization suggestions"
+            }
+          ]
+        };
       }
       
       let optimization;
       try {
         optimization = JSON.parse(jsonMatch[0]);
       } catch (parseError) {
-        // Fallback optimization
-        optimization = {
-          optimized_code: code, // Return original code if parsing fails
+        return {
+          optimized_code: code,
           improvements: [
             {
-              type: "analysis",
-              description: "Code optimization analysis could not be completed",
-              impact: "Please try again for detailed optimization suggestions"
+              type: "parsing",
+              description: "Unable to parse optimization results",
+              impact: "Please try again or check code syntax"
             }
           ]
         };

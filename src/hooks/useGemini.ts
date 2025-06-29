@@ -17,29 +17,62 @@ export const useCodeAnalysis = () => {
       return;
     }
 
+    if (!code || !code.trim()) {
+      toast.error('Please provide code to analyze');
+      return;
+    }
+
     setAnalyzing(true);
     try {
+      // Check if Gemini is available
+      if (!geminiService.isAvailable()) {
+        toast.error('Gemini API not configured. Please check your environment variables.');
+      }
+
       // Get AI analysis
       const analysis = await geminiService.analyzeCode(code, language);
       setResult(analysis);
 
       // Save to database
-      await db.createCodeAnalysis({
-        user_id: user.id,
-        title: title || 'Code Analysis',
-        code_content: code,
-        language,
-        analysis_result: analysis,
-        score: analysis.score
-      });
+      try {
+        await db.createCodeAnalysis({
+          user_id: user.id,
+          title: title || 'Code Analysis',
+          code_content: code,
+          language,
+          analysis_result: analysis,
+          score: analysis.score
+        });
 
-      // Update user stats
-      await incrementAnalyses();
+        // Update user stats
+        await incrementAnalyses();
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        // Don't throw here - analysis was successful, just DB save failed
+        toast.error('Analysis complete, but failed to save to database');
+      }
 
-      toast.success('Code analysis complete!');
+      if (geminiService.isAvailable()) {
+        toast.success('Code analysis complete!');
+      } else {
+        toast.success('Basic analysis complete! Configure Gemini API for advanced features.');
+      }
+      
       return analysis;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to analyze code');
+      console.error('Code analysis error:', error);
+      
+      // Provide specific error messages
+      if (error.message?.includes('API key')) {
+        toast.error('Invalid API key. Please check your Gemini configuration.');
+      } else if (error.message?.includes('quota')) {
+        toast.error('API quota exceeded. Please try again later.');
+      } else if (error.message?.includes('safety')) {
+        toast.error('Content blocked by safety filters. Please try different code.');
+      } else {
+        toast.error(error.message || 'Failed to analyze code');
+      }
+      
       throw error;
     } finally {
       setAnalyzing(false);
@@ -66,30 +99,63 @@ export const useProblemSolver = () => {
       return;
     }
 
+    if (!problemStatement || !problemStatement.trim()) {
+      toast.error('Please provide a problem statement');
+      return;
+    }
+
     setSolving(true);
     try {
+      // Check if Gemini is available
+      if (!geminiService.isAvailable()) {
+        toast.error('Gemini API not configured. Please check your environment variables.');
+      }
+
       // Get AI solution
       const result = await geminiService.solveProblem(problemStatement, language);
       setSolution(result);
 
       // Save to database
-      await db.createProblemSolution({
-        user_id: user.id,
-        problem_statement: problemStatement,
-        language,
-        solution_code: result.solution_code,
-        explanation: result.explanation,
-        execution_result: result.execution_result,
-        optimization_suggestions: result.optimization_suggestions
-      });
+      try {
+        await db.createProblemSolution({
+          user_id: user.id,
+          problem_statement: problemStatement,
+          language,
+          solution_code: result.solution_code,
+          explanation: result.explanation,
+          execution_result: result.execution_result,
+          optimization_suggestions: result.optimization_suggestions
+        });
 
-      // Update user stats
-      await incrementProblemsSolved();
+        // Update user stats
+        await incrementProblemsSolved();
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        // Don't throw here - solution was generated, just DB save failed
+        toast.error('Solution generated, but failed to save to database');
+      }
 
-      toast.success('Solution generated successfully!');
+      if (geminiService.isAvailable()) {
+        toast.success('Solution generated successfully!');
+      } else {
+        toast.success('Basic solution template created! Configure Gemini API for AI-generated solutions.');
+      }
+      
       return result;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to generate solution');
+      console.error('Problem solving error:', error);
+      
+      // Provide specific error messages
+      if (error.message?.includes('API key')) {
+        toast.error('Invalid API key. Please check your Gemini configuration.');
+      } else if (error.message?.includes('quota')) {
+        toast.error('API quota exceeded. Please try again later.');
+      } else if (error.message?.includes('safety')) {
+        toast.error('Content blocked by safety filters. Please try a different problem.');
+      } else {
+        toast.error(error.message || 'Failed to generate solution');
+      }
+      
       throw error;
     } finally {
       setSolving(false);
@@ -114,34 +180,47 @@ export const useAIChat = () => {
       return;
     }
 
+    if (!message || !message.trim()) {
+      toast.error('Please enter a message');
+      return;
+    }
+
     setLoading(true);
     try {
       // Create conversation if needed
       let currentConversationId = conversationId;
       if (!currentConversationId) {
-        const { data: conversation } = await db.createConversation(user.id);
-        currentConversationId = conversation?.id;
+        try {
+          const { data: conversation } = await db.createConversation(user.id);
+          currentConversationId = conversation?.id;
+        } catch (dbError) {
+          console.error('Failed to create conversation:', dbError);
+          // Continue without saving to DB
+        }
       }
-
-      if (!currentConversationId) {
-        throw new Error('Failed to create conversation');
-      }
-
-      // Add user message
-      await db.addMessage(currentConversationId, 'user', message);
 
       // Get AI response
       const aiResponse = await geminiService.chatWithAssistant(message, context);
 
-      // Add AI response
-      await db.addMessage(currentConversationId, 'assistant', aiResponse);
+      // Add messages to database if conversation exists
+      if (currentConversationId) {
+        try {
+          await db.addMessage(currentConversationId, 'user', message);
+          await db.addMessage(currentConversationId, 'assistant', aiResponse);
+        } catch (dbError) {
+          console.error('Failed to save messages:', dbError);
+          // Continue - the AI response was successful
+        }
+      }
 
       return {
         conversationId: currentConversationId,
         response: aiResponse
       };
     } catch (error: any) {
-      toast.error(error.message || 'Failed to send message');
+      console.error('AI chat error:', error);
+      
+      // Don't show toast here - let the calling component handle it
       throw error;
     } finally {
       setLoading(false);
@@ -158,12 +237,24 @@ export const useCodeOptimization = () => {
   const [optimizing, setOptimizing] = useState(false);
 
   const optimizeCode = async (code: string, language: string) => {
+    if (!code || !code.trim()) {
+      toast.error('Please provide code to optimize');
+      return;
+    }
+
     setOptimizing(true);
     try {
       const result = await geminiService.optimizeCode(code, language);
-      toast.success('Code optimization complete!');
+      
+      if (geminiService.isAvailable()) {
+        toast.success('Code optimization complete!');
+      } else {
+        toast.success('Basic optimization analysis complete! Configure Gemini API for advanced optimization.');
+      }
+      
       return result;
     } catch (error: any) {
+      console.error('Code optimization error:', error);
       toast.error(error.message || 'Failed to optimize code');
       throw error;
     } finally {

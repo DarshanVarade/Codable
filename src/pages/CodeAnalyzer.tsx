@@ -12,10 +12,13 @@ import {
   Brain,
   GitBranch,
   Zap,
-  Info
+  Info,
+  Settings,
+  RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCodeAnalysis } from '../hooks/useGemini';
+import { geminiService } from '../lib/gemini';
 
 const CodeAnalyzer: React.FC = () => {
   const [code, setCode] = useState('');
@@ -142,6 +145,18 @@ const CodeAnalyzer: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-3">
+          {/* API Status Indicator */}
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
+            geminiService.isAvailable() 
+              ? 'bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/30' 
+              : 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border border-yellow-500/30'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${
+              geminiService.isAvailable() ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'
+            }`} />
+            <span>{geminiService.isAvailable() ? 'Gemini AI Ready' : 'Basic Mode'}</span>
+          </div>
+
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
@@ -253,7 +268,10 @@ const CodeAnalyzer: React.FC = () => {
                 <div className="w-16 h-16 border-4 border-primary-dark border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 <p className="text-lg font-medium">Analyzing your code...</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  AI is examining your code for insights
+                  {geminiService.isAvailable() 
+                    ? 'AI is examining your code for insights' 
+                    : 'Performing basic code analysis'
+                  }
                 </p>
               </div>
             ) : result ? (
@@ -357,6 +375,19 @@ const CodeAnalyzer: React.FC = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* API Status Notice */}
+                    {!geminiService.isAvailable() && (
+                      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Settings className="w-5 h-5 text-yellow-600" />
+                          <span className="font-medium text-yellow-900 dark:text-yellow-100">Basic Analysis Mode</span>
+                        </div>
+                        <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                          For advanced AI-powered analysis, configure your Gemini API key in the environment variables.
+                        </p>
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -369,6 +400,13 @@ const CodeAnalyzer: React.FC = () => {
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Paste your code in the editor and click "Analyze Code" to get started
                 </p>
+                {!geminiService.isAvailable() && (
+                  <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                      <strong>Note:</strong> Running in basic mode. Configure Gemini API for advanced analysis.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
