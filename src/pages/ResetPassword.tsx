@@ -16,7 +16,6 @@ const ResetPassword: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isValidSession, setIsValidSession] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
@@ -24,18 +23,25 @@ const ResetPassword: React.FC = () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) throw error;
+        console.log('Reset password page - checking session:', {
+          hasSession: !!session,
+          hasUser: !!session?.user,
+          error: error?.message
+        });
         
-        if (session) {
-          setIsValidSession(true);
+        if (error) {
+          console.error('Session check error:', error);
+        }
+        
+        if (session && session.user) {
+          console.log('Valid session found, showing reset form');
           setStep('reset');
         } else {
-          setIsValidSession(false);
+          console.log('No valid session, showing request form');
           setStep('request');
         }
       } catch (error: any) {
         console.error('Session check error:', error);
-        setIsValidSession(false);
         setStep('request');
       } finally {
         setCheckingSession(false);
@@ -43,6 +49,23 @@ const ResetPassword: React.FC = () => {
     };
 
     checkSession();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change in reset password:', event, !!session);
+      
+      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+        if (session) {
+          setStep('reset');
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setStep('request');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleRequestReset = async (e: React.FormEvent) => {
@@ -196,6 +219,15 @@ const ResetPassword: React.FC = () => {
             </form>
           ) : (
             <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <span className="text-sm text-green-700 dark:text-green-300">
+                    Reset link verified! Please enter your new password.
+                  </span>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2">New Password</label>
                 <div className="relative">

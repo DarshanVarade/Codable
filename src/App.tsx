@@ -22,21 +22,37 @@ const AuthHandler: React.FC = () => {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
+      // Get parameters from both search params and hash
       const token = searchParams.get('token');
       const type = searchParams.get('type');
-      const accessToken = searchParams.get('access_token');
-      const refreshToken = searchParams.get('refresh_token');
       const error = searchParams.get('error');
       const errorDescription = searchParams.get('error_description');
       const errorCode = searchParams.get('error_code');
 
+      // Also check hash parameters (for OAuth flows)
+      const hash = window.location.hash.substring(1);
+      const hashParams = new URLSearchParams(hash);
+      const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+      const hashType = hashParams.get('type') || type;
+      const hashError = hashParams.get('error') || error;
+
+      console.log('Auth callback params:', {
+        token,
+        type: hashType,
+        accessToken: accessToken ? 'present' : 'missing',
+        refreshToken: refreshToken ? 'present' : 'missing',
+        error: hashError,
+        errorDescription,
+        errorCode
+      });
+
       // Handle errors - redirect to reset password page for expired tokens
-      if (error) {
-        console.error('Auth callback error:', error, errorDescription);
+      if (hashError || error) {
+        console.error('Auth callback error:', hashError || error, errorDescription);
         
-        if (errorCode === 'otp_expired' || error === 'access_denied') {
+        if (errorCode === 'otp_expired' || hashError === 'access_denied') {
           toast.error('Reset link has expired. Please request a new one.');
-          // Redirect to reset password page where user can enter email again
           navigate('/reset-password', { replace: true });
           return;
         }
@@ -46,13 +62,15 @@ const AuthHandler: React.FC = () => {
         return;
       }
 
-      // Handle password reset (recovery type)
-      if (type === 'recovery' || (accessToken && refreshToken && searchParams.toString().includes('type=recovery'))) {
+      // Handle password reset (recovery type) - this is the main case for password reset links
+      if (hashType === 'recovery' && accessToken && refreshToken) {
         try {
+          console.log('Processing password reset with valid tokens');
+          
           // Set the session for password reset
           const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken!,
-            refresh_token: refreshToken!
+            access_token: accessToken,
+            refresh_token: refreshToken
           });
           
           if (sessionError) {
@@ -60,7 +78,10 @@ const AuthHandler: React.FC = () => {
             throw sessionError;
           }
           
-          // Redirect to reset password page
+          console.log('Session set successfully, redirecting to reset password page');
+          
+          // Redirect to reset password page with a success message
+          toast.success('Reset link verified! Please enter your new password.');
           navigate('/reset-password', { replace: true });
           return;
         } catch (error: any) {
@@ -74,6 +95,8 @@ const AuthHandler: React.FC = () => {
       // Handle email verification
       if (token && type === 'signup') {
         try {
+          console.log('Processing email verification');
+          
           // Verify the email token
           const { error } = await supabase.auth.verifyOtp({
             token_hash: token,
@@ -93,9 +116,11 @@ const AuthHandler: React.FC = () => {
         }
       }
       
-      // Handle other auth callbacks (like magic links)
-      if (accessToken && refreshToken) {
+      // Handle other auth callbacks (like magic links or OAuth)
+      if (accessToken && refreshToken && !hashType) {
         try {
+          console.log('Processing general auth callback');
+          
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
@@ -119,8 +144,8 @@ const AuthHandler: React.FC = () => {
       navigate('/', { replace: true });
     };
 
-    // Only run if we have search parameters
-    if (searchParams.toString()) {
+    // Only run if we have search parameters or hash
+    if (searchParams.toString() || window.location.hash) {
       handleAuthCallback();
     } else {
       // No parameters at all, redirect to home
