@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Brain } from 'lucide-react';
 import Navbar from './Navbar';
 import AIAssistant from './AIAssistant';
 import { useLocation } from 'react-router-dom';
