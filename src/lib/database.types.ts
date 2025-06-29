@@ -177,6 +177,7 @@ export interface Database {
           current_streak: number
           longest_streak: number
           time_saved_minutes: number
+          total_time_spent_minutes: number
           total_points: number
           last_activity: string
           updated_at: string
@@ -188,6 +189,7 @@ export interface Database {
           current_streak?: number
           longest_streak?: number
           time_saved_minutes?: number
+          total_time_spent_minutes?: number
           total_points?: number
           last_activity?: string
           updated_at?: string
@@ -199,6 +201,7 @@ export interface Database {
           current_streak?: number
           longest_streak?: number
           time_saved_minutes?: number
+          total_time_spent_minutes?: number
           total_points?: number
           last_activity?: string
           updated_at?: string
