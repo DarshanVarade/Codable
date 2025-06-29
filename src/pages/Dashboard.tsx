@@ -18,12 +18,15 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer } fro
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
 import { useUserStats } from '../hooks/useUserStats';
+import { db } from '../lib/supabase';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { profile } = useProfile();
   const { stats, refetch } = useUserStats();
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [realActivityData, setRealActivityData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
 
@@ -51,82 +54,123 @@ const Dashboard: React.FC = () => {
     return { text: 'Legendary!', color: 'text-red-500', bgColor: 'bg-red-500' };
   };
 
-  // Generate heatmap data for the past year
-  const generateHeatmapData = () => {
-    const data = [];
-    const today = new Date();
-    const oneYearAgo = new Date(today);
-    oneYearAgo.setFullYear(today.getFullYear() - 1);
-    
-    // Start from the beginning of the week containing one year ago
-    const startDate = new Date(oneYearAgo);
-    startDate.setDate(startDate.getDate() - startDate.getDay());
-    
-    const totalActivity = (stats?.total_analyses || 0) + (stats?.problems_solved || 0);
-    const currentStreak = stats?.current_streak || 0;
-    
-    for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
-      const dayOfYear = Math.floor((d.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const isRecent = (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24) <= currentStreak;
+  // Fetch real activity data from database
+  const fetchRealActivityData = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      // Get all user activities from database
+      const [analysesResult, solutionsResult] = await Promise.all([
+        db.getCodeAnalyses(user.id),
+        db.getProblemSolutions(user.id)
+      ]);
+
+      const analyses = analysesResult.data || [];
+      const solutions = solutionsResult.data || [];
+
+      // Combine all activities
+      const allActivities = [
+        ...analyses.map(a => ({ date: a.created_at, type: 'analysis' })),
+        ...solutions.map(s => ({ date: s.created_at, type: 'solution' }))
+      ];
+
+      // Group activities by date
+      const activityByDate = new Map();
       
-      let intensity = 0;
-      if (totalActivity > 0) {
-        // Simulate activity based on patterns
-        const weekday = d.getDay();
-        const isWeekend = weekday === 0 || weekday === 6;
+      allActivities.forEach(activity => {
+        const date = new Date(activity.date);
+        const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         
-        // Higher chance of activity on weekdays
-        const baseChance = isWeekend ? 0.3 : 0.7;
-        
-        // Recent streak affects recent days
-        const streakBonus = isRecent ? 0.8 : 0;
-        
-        // Random activity with some patterns
-        const randomFactor = Math.random();
-        const activityChance = Math.min(baseChance + streakBonus, 1);
-        
-        if (randomFactor < activityChance) {
-          // Determine intensity (0-4)
-          if (randomFactor < 0.1) intensity = 4; // Very high
-          else if (randomFactor < 0.3) intensity = 3; // High
-          else if (randomFactor < 0.6) intensity = 2; // Medium
-          else intensity = 1; // Low
+        if (!activityByDate.has(dateKey)) {
+          activityByDate.set(dateKey, { date: new Date(date.getFullYear(), date.getMonth(), date.getDate()), count: 0 });
         }
-        
-        // Ensure current streak days have activity
-        if (isRecent && currentStreak > 0) {
-          intensity = Math.max(intensity, 1);
-        }
-      }
-      
-      data.push({
-        date: new Date(d),
-        intensity,
-        count: intensity > 0 ? Math.floor(Math.random() * 10) + 1 : 0
+        activityByDate.get(dateKey).count++;
       });
+
+      // Convert to array and sort by date
+      const activityData = Array.from(activityByDate.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+      
+      setRealActivityData(activityData);
+    } catch (error) {
+      console.error('Error fetching activity data:', error);
+      setRealActivityData([]);
+    } finally {
+      setLoading(false);
     }
-    
-    return data;
   };
 
-  const heatmapData = generateHeatmapData();
+  // Generate responsive heatmap data based on screen size
+  const generateResponsiveHeatmapData = () => {
+    if (realActivityData.length === 0) return { weeks: [], totalContributions: 0, monthLabels: [] };
 
-  // Group heatmap data by weeks
-  const getHeatmapWeeks = () => {
-    const weeks = [];
-    let currentWeek = [];
+    // Calculate how many weeks we can show based on screen width
+    const screenWidth = window.innerWidth;
+    let weeksToShow = 52; // Default to 1 year
     
-    heatmapData.forEach((day, index) => {
-      currentWeek.push(day);
-      
-      if (day.date.getDay() === 6 || index === heatmapData.length - 1) {
-        // End of week (Saturday) or last day
-        weeks.push([...currentWeek]);
-        currentWeek = [];
-      }
+    if (screenWidth < 640) { // sm
+      weeksToShow = 20; // ~5 months
+    } else if (screenWidth < 768) { // md
+      weeksToShow = 30; // ~7 months
+    } else if (screenWidth < 1024) { // lg
+      weeksToShow = 40; // ~10 months
+    }
+
+    // Get the most recent activity date or today
+    const latestDate = realActivityData.length > 0 
+      ? new Date(Math.max(...realActivityData.map(d => d.date.getTime())))
+      : new Date();
+
+    // Calculate start date based on weeks to show
+    const startDate = new Date(latestDate);
+    startDate.setDate(startDate.getDate() - (weeksToShow * 7));
+    
+    // Align to start of week (Sunday)
+    startDate.setDate(startDate.getDate() - startDate.getDay());
+
+    // Create activity map for quick lookup
+    const activityMap = new Map();
+    realActivityData.forEach(activity => {
+      const dateKey = activity.date.toISOString().split('T')[0];
+      activityMap.set(dateKey, activity.count);
     });
-    
-    return weeks;
+
+    // Generate weeks data
+    const weeks = [];
+    let currentDate = new Date(startDate);
+    let totalContributions = 0;
+
+    for (let week = 0; week < weeksToShow; week++) {
+      const weekData = [];
+      
+      for (let day = 0; day < 7; day++) {
+        const dateKey = currentDate.toISOString().split('T')[0];
+        const count = activityMap.get(dateKey) || 0;
+        const intensity = count === 0 ? 0 : Math.min(Math.ceil(count / 2), 4); // Scale to 0-4
+        
+        weekData.push({
+          date: new Date(currentDate),
+          count,
+          intensity
+        });
+
+        totalContributions += count;
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      weeks.push(weekData);
+    }
+
+    // Generate month labels
+    const monthLabels = [];
+    const monthsToShow = Math.ceil(weeksToShow / 4.33); // Approximate months
+    for (let i = monthsToShow - 1; i >= 0; i--) {
+      const date = new Date(latestDate);
+      date.setMonth(date.getMonth() - i);
+      monthLabels.push(date.toLocaleDateString('en-US', { month: 'short' }));
+    }
+
+    return { weeks, totalContributions, monthLabels };
   };
 
   const getIntensityColor = (intensity: number) => {
@@ -138,19 +182,6 @@ const Dashboard: React.FC = () => {
       case 4: return 'bg-green-500 dark:bg-green-500';
       default: return 'bg-gray-100 dark:bg-gray-800';
     }
-  };
-
-  const getMonthLabels = () => {
-    const months = [];
-    const today = new Date();
-    
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date(today);
-      date.setMonth(date.getMonth() - i);
-      months.push(date.toLocaleDateString('en-US', { month: 'short' }));
-    }
-    
-    return months;
   };
 
   const currentStreak = stats?.current_streak || 0;
@@ -261,37 +292,65 @@ const Dashboard: React.FC = () => {
 
   const activityData = generateActivityData();
 
+  // Fetch real data when switching to heatmap view
+  useEffect(() => {
+    if (showHeatmap && realActivityData.length === 0) {
+      fetchRealActivityData();
+    }
+  }, [showHeatmap, user]);
+
   // Refresh stats when component mounts
   useEffect(() => {
     refetch();
   }, []);
 
   const renderHeatmap = () => {
-    const weeks = getHeatmapWeeks();
-    const monthLabels = getMonthLabels();
-    const totalContributions = heatmapData.reduce((sum, day) => sum + day.count, 0);
+    if (loading) {
+      return (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 border-4 border-primary-dark border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-lg font-medium">Loading activity data...</p>
+        </div>
+      );
+    }
+
+    const { weeks, totalContributions, monthLabels } = generateResponsiveHeatmapData();
+    
+    if (weeks.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <Activity className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <p className="text-lg font-medium mb-2">No Activity Yet</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Start analyzing code or solving problems to see your activity heatmap!
+          </p>
+        </div>
+      );
+    }
     
     return (
       <motion.div
         initial={{ opacity: 0, height: 0 }}
         animate={{ opacity: 1, height: 'auto' }}
         exit={{ opacity: 0, height: 0 }}
-        className="mt-6 p-6 bg-gray-50/50 dark:bg-gray-800/50 rounded-xl border border-gray-200/20 dark:border-gray-700/20"
+        className="space-y-4"
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Activity className="w-5 h-5" />
             Login Heat Map
           </h3>
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            {totalContributions} contributions in the last year
+            {totalContributions} contributions
           </div>
         </div>
         
-        {/* Month labels */}
+        {/* Month labels - responsive */}
         <div className="flex justify-between text-xs text-gray-500 mb-2 ml-8">
           {monthLabels.map((month, index) => (
-            <span key={index} className="w-10 text-center">{month}</span>
+            <span key={index} className="text-center" style={{ width: `${100 / monthLabels.length}%` }}>
+              {month}
+            </span>
           ))}
         </div>
         
@@ -309,9 +368,9 @@ const Dashboard: React.FC = () => {
           </div>
           
           {/* Heatmap cells */}
-          <div className="flex gap-1 overflow-x-auto">
+          <div className="flex gap-1 flex-1">
             {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-1">
+              <div key={weekIndex} className="flex flex-col gap-1 flex-1">
                 {Array.from({ length: 7 }, (_, dayIndex) => {
                   const day = week[dayIndex];
                   const isToday = day && day.date.toDateString() === new Date().toDateString();
@@ -319,10 +378,11 @@ const Dashboard: React.FC = () => {
                   return (
                     <div
                       key={dayIndex}
-                      className={`w-3 h-3 rounded-sm border border-gray-200 dark:border-gray-600 ${
+                      className={`h-3 rounded-sm border border-gray-200 dark:border-gray-600 ${
                         day ? getIntensityColor(day.intensity) : 'bg-gray-100 dark:bg-gray-800'
                       } ${isToday ? 'ring-2 ring-primary-dark' : ''} hover:ring-2 hover:ring-gray-400 transition-all cursor-pointer`}
                       title={day ? `${day.date.toLocaleDateString()}: ${day.count} contributions` : ''}
+                      style={{ aspectRatio: '1' }}
                     />
                   );
                 })}
@@ -332,7 +392,7 @@ const Dashboard: React.FC = () => {
         </div>
         
         {/* Legend */}
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
             <span>Less</span>
             <div className="flex gap-1">
@@ -352,7 +412,7 @@ const Dashboard: React.FC = () => {
         </div>
         
         {/* Stats summary */}
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-200/20 dark:border-gray-700/20">
+        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200/20 dark:border-gray-700/20">
           <div className="text-center">
             <div className="text-lg font-bold text-gray-900 dark:text-white">{currentStreak}</div>
             <div className="text-xs text-gray-600 dark:text-gray-400">Current Streak</div>
@@ -463,7 +523,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <Calendar className="w-4 h-4" />
-              {showHeatmap ? 'Your login activity over time' : 'Your coding activity this week'}
+              {showHeatmap ? 'Your coding activity over time' : 'Your coding activity this week'}
             </div>
           </div>
           
