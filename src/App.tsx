@@ -9,6 +9,7 @@ import ProblemSolver from './pages/ProblemSolver';
 import Settings from './pages/Settings';
 import AdminPanel from './pages/AdminPanel';
 import ResetPassword from './pages/ResetPassword';
+import WelcomeGuide from './pages/WelcomeGuide';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import { ThemeProvider } from './context/ThemeContext';
@@ -78,11 +79,11 @@ const AuthHandler: React.FC = () => {
           }
           
           // Check if this is a new user signup (check for pending user data)
-          const pendingUserData = localStorage.getItem('pendingUserData');
-          if (pendingUserData) {
+          const pendingSignupData = localStorage.getItem('pendingSignupData');
+          if (pendingSignupData) {
             try {
-              const userData = JSON.parse(pendingUserData);
-              console.log('Found pending user data, creating account with:', userData);
+              const userData = JSON.parse(pendingSignupData);
+              console.log('Found pending signup data, creating account with:', userData);
               
               // Create the account with the stored data
               const { error: signUpError } = await auth.signUp(userData.email, userData.password, {
@@ -95,9 +96,13 @@ const AuthHandler: React.FC = () => {
               }
               
               // Clear the pending data
-              localStorage.removeItem('pendingUserData');
+              localStorage.removeItem('pendingSignupData');
               
               toast.success('Account created successfully! Welcome to Codable!');
+              
+              // Redirect to welcome guide for new users
+              navigate('/app/welcome', { replace: true });
+              return;
             } catch (error: any) {
               console.error('Error processing pending signup:', error);
               // Continue with normal magic link flow even if signup fails
@@ -253,6 +258,7 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Routes>
+                    <Route path="welcome" element={<WelcomeGuide />} />
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="analyzer" element={<CodeAnalyzer />} />
                     <Route path="solver" element={<ProblemSolver />} />

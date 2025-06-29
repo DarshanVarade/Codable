@@ -89,7 +89,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           throw error;
         }
       } else if (step === 'signup') {
-        // Instead of creating account directly, send magic link for verification
+        // Store user data temporarily and send magic link
+        const userData = {
+          email,
+          full_name: fullName,
+          password
+        };
+        
+        // Store in localStorage temporarily
+        localStorage.setItem('pendingSignupData', JSON.stringify(userData));
+        
+        // Send magic link
         const { error } = await sendMagicLink(email);
         if (error) {
           if (error.message.includes('User already registered')) {
@@ -101,13 +111,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           }
           throw error;
         }
-        
-        // Store user data for when they click the magic link
-        localStorage.setItem('pendingUserData', JSON.stringify({
-          email,
-          full_name: fullName,
-          password // We'll use this to create the account when they verify
-        }));
         
         setStep('signup-success');
       } else if (step === 'forgot') {
@@ -631,7 +634,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             <li>Check your email inbox (and spam folder)</li>
             <li>Click the magic link in the email</li>
             <li>Your account will be created and you'll be signed in automatically</li>
-            <li>You'll be redirected to your dashboard to start coding!</li>
+            <li>You'll see a welcome guide to get started with Codable!</li>
           </ol>
         </div>
       </div>
