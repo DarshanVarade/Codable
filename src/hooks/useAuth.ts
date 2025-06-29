@@ -47,6 +47,11 @@ export const useAuth = () => {
     return { data, error };
   };
 
+  const resendVerification = async (email: string) => {
+    const { data, error } = await auth.resendVerification(email);
+    return { data, error };
+  };
+
   return {
     user,
     loading,
@@ -54,6 +59,7 @@ export const useAuth = () => {
     signIn,
     signOut,
     resetPassword,
-    updatePassword
+    updatePassword,
+    resendVerification
   };
 };

@@ -52,6 +52,16 @@ export const auth = {
     });
   },
 
+  resendVerification: async (email: string) => {
+    return await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`
+      }
+    });
+  },
+
   getCurrentUser: async () => {
     const { data: { user } } = await supabase.auth.getUser();
     return user;

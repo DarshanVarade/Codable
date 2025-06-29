@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -22,42 +22,107 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resetToken, setResetToken] = useState('');
-  const { signIn, signUp, resetPassword, updatePassword } = useAuth();
+  const [authError, setAuthError] = useState<string | null>(null);
+  const { signIn, signUp, resetPassword, updatePassword, resendVerification } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setAuthError(null);
 
     try {
       if (step === 'signin') {
         const { error } = await signIn(email, password);
-        if (error) throw error;
+        if (error) {
+          // Handle specific authentication errors
+          if (error.message.includes('Invalid login credentials')) {
+            setAuthError('Invalid email or password. Please check your credentials and try again.');
+          } else if (error.message.includes('Email not confirmed')) {
+            setAuthError('Please verify your email address before signing in. Check your inbox for a verification link.');
+            // Optionally show resend verification option
+            setTimeout(() => {
+              setStep('verify');
+            }, 2000);
+          } else if (error.message.includes('Too many requests')) {
+            setAuthError('Too many login attempts. Please wait a few minutes before trying again.');
+          } else {
+            setAuthError(error.message || 'An error occurred during sign in.');
+          }
+          throw error;
+        }
         toast.success('Welcome back!');
         onClose();
       } else if (step === 'signup') {
         const { error } = await signUp(email, password, { full_name: fullName });
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('User already registered')) {
+            setAuthError('An account with this email already exists. Please sign in instead.');
+          } else if (error.message.includes('Password should be at least')) {
+            setAuthError('Password must be at least 6 characters long.');
+          } else if (error.message.includes('Invalid email')) {
+            setAuthError('Please enter a valid email address.');
+          } else {
+            setAuthError(error.message || 'An error occurred during sign up.');
+          }
+          throw error;
+        }
         setStep('verify');
       } else if (step === 'forgot') {
         const { error } = await resetPassword(email);
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('User not found')) {
+            setAuthError('No account found with this email address.');
+          } else {
+            setAuthError(error.message || 'An error occurred while sending reset email.');
+          }
+          throw error;
+        }
         setStep('instructions');
       } else if (step === 'reset') {
         if (password !== confirmPassword) {
+          setAuthError('Passwords do not match');
           throw new Error('Passwords do not match');
         }
         if (password.length < 6) {
+          setAuthError('Password must be at least 6 characters');
           throw new Error('Password must be at least 6 characters');
         }
         const { error } = await updatePassword(password);
-        if (error) throw error;
+        if (error) {
+          setAuthError(error.message || 'An error occurred while updating password.');
+          throw error;
+        }
         toast.success('Password updated successfully!');
         setStep('signin');
         resetForm();
       }
     } catch (error: any) {
-      toast.error(error.message || 'An error occurred');
+      // Error is already handled above, just prevent the success flow
+      console.error('Auth error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) {
+      setAuthError('Please enter your email address first.');
+      return;
+    }
+
+    setLoading(true);
+    setAuthError(null);
+
+    try {
+      const { error } = await resendVerification(email);
+      if (error) {
+        setAuthError(error.message || 'Failed to resend verification email.');
+      } else {
+        toast.success('Verification email sent! Check your inbox.');
+      }
+    } catch (error: any) {
+      setAuthError('Failed to resend verification email.');
     } finally {
       setLoading(false);
     }
@@ -71,6 +136,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setShowPassword(false);
     setShowConfirmPassword(false);
     setResetToken('');
+    setAuthError(null);
   };
 
   const handleCancel = () => {
@@ -81,6 +147,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleBack = () => {
+    setAuthError(null);
     if (step === 'signup' || step === 'forgot') {
       setStep('signin');
     } else if (step === 'reset') {
@@ -104,8 +171,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const renderErrorMessage = () => {
+    if (!authError) return null;
+
+    return (
+      <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+        <div className="flex items-start gap-2">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-red-700 dark:text-red-300">
+            {authError}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderSignIn = () => (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {renderErrorMessage()}
+      
       <div>
         <label className="block text-sm font-medium mb-2">Email</label>
         <div className="relative">
@@ -113,7 +197,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setAuthError(null);
+            }}
             className="w-full pl-10 pr-4 py-3 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
             placeholder="Enter your email"
             required
@@ -128,7 +215,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <input
             type={showPassword ? 'text' : 'password'}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setAuthError(null);
+            }}
             className="w-full pl-10 pr-12 py-3 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
             placeholder="Enter your password"
             required
@@ -186,6 +276,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const renderSignUp = () => (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {renderErrorMessage()}
+      
       <div>
         <label className="block text-sm font-medium mb-2">Full Name</label>
         <div className="relative">
@@ -193,7 +285,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <input
             type="text"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            onChange={(e) => {
+              setFullName(e.target.value);
+              setAuthError(null);
+            }}
             className="w-full pl-10 pr-4 py-3 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
             placeholder="Enter your full name"
             required
@@ -208,7 +303,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setAuthError(null);
+            }}
             className="w-full pl-10 pr-4 py-3 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
             placeholder="Enter your email"
             required
@@ -223,7 +321,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <input
             type={showPassword ? 'text' : 'password'}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setAuthError(null);
+            }}
             className="w-full pl-10 pr-12 py-3 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
             placeholder="Enter your password"
             required
@@ -272,6 +373,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const renderForgotPassword = () => (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {renderErrorMessage()}
+      
       <div className="text-center mb-4">
         <p className="text-gray-600 dark:text-gray-400">
           Enter your email address and we'll send you a link to reset your password.
@@ -285,7 +388,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setAuthError(null);
+            }}
             className="w-full pl-10 pr-4 py-3 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
             placeholder="Enter your email"
             required
@@ -312,6 +418,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const renderResetPassword = () => (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {renderErrorMessage()}
+      
       <div className="text-center mb-4">
         <p className="text-gray-600 dark:text-gray-400">
           Enter your new password below.
@@ -325,7 +433,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <input
             type={showPassword ? 'text' : 'password'}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setAuthError(null);
+            }}
             className="w-full pl-10 pr-12 py-3 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
             placeholder="Enter new password"
             required
@@ -348,7 +459,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <input
             type={showConfirmPassword ? 'text' : 'password'}
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              setAuthError(null);
+            }}
             className="w-full pl-10 pr-12 py-3 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
             placeholder="Confirm new password"
             required
@@ -411,13 +525,30 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
       <div className="space-y-3">
         <button
+          onClick={handleResendVerification}
+          disabled={loading}
+          className="w-full py-2 text-primary-dark border border-primary-dark rounded-lg hover:bg-primary-dark/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <div className="flex items-center justify-center gap-2">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              Resending...
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Resend Verification Email
+            </div>
+          )}
+        </button>
+        <button
           onClick={() => setStep('signin')}
-          className="w-full py-2 text-primary-dark border border-primary-dark rounded-lg hover:bg-primary-dark/10 transition-colors"
+          className="w-full py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
         >
           Back to Sign In
         </button>
         <p className="text-xs text-gray-500">
-          Didn't receive the email? Check your spam folder or contact support.
+          Didn't receive the email? Check your spam folder or use the resend button above.
         </p>
       </div>
     </div>
