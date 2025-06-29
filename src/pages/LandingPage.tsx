@@ -13,6 +13,7 @@ import {
   Bot,
   Target
 } from 'lucide-react';
+import Footer from '../components/Footer';
 
 const LandingPage: React.FC = () => {
   const stats = [
@@ -192,6 +193,9 @@ const LandingPage: React.FC = () => {
           </Link>
         </motion.div>
       </section>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

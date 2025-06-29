@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain } from 'lucide-react';
 import Navbar from './Navbar';
+import Footer from './Footer';
 import AIAssistant from './AIAssistant';
 import { useLocation } from 'react-router-dom';
 
@@ -17,7 +18,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isSettingsPage = location.pathname.includes('/settings');
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col min-h-screen">
       <Navbar />
       
       <main className="flex-1 overflow-y-auto p-6">
@@ -29,6 +30,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </motion.div>
       </main>
+
+      {/* Footer */}
+      <Footer />
 
       {/* Floating AI Assistant Button */}
       {!isSettingsPage && (
