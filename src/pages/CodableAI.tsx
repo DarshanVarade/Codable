@@ -14,7 +14,8 @@ import {
   Info,
   RefreshCw,
   Settings,
-  Bot
+  Bot,
+  ArrowRight
 } from 'lucide-react';
 import { CopilotSidebar } from '@copilotkit/react-ui';
 import { useAIChat } from '../hooks/useGemini';
@@ -111,7 +112,9 @@ I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** a
 
 **Just paste your code or ask any programming question to get started!** ✨
 
-**Note**: You can switch between AI providers using the button in the navbar. ${aiProvider === 'copilotkit' ? 'CopilotKit requires a backend proxy for full functionality.' : 'Gemini provides full AI capabilities.'}`,
+${aiProvider === 'copilotkit' 
+  ? '**Note**: CopilotKit provides helpful guidance and templates. For advanced AI analysis, try switching to Gemini 2.0 Flash using the navbar button!' 
+  : '**Note**: Gemini 2.0 Flash provides comprehensive AI analysis. You can also try CopilotKit for workflow assistance using the navbar switch!'}`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       source: aiProvider
     };
@@ -150,7 +153,6 @@ I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** a
         // Use CopilotKit for response
         response = await sendCopilotMessage(currentInput);
         source = 'copilotkit';
-        toast.success('Response from CopilotKit! 🤖');
       } else {
         // Use Gemini for response
         const result = await sendGeminiMessage(currentInput, currentConversationId || undefined);
@@ -181,8 +183,10 @@ I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** a
         content: `❌ **Error**: ${error.message || 'Failed to get response'}
 
 ${aiProvider === 'copilotkit' 
-  ? '**CopilotKit Notice**: This integration requires a backend proxy for full functionality. Try switching to Gemini using the AI provider button in the navbar for immediate assistance!' 
-  : 'Please check your Gemini API key in the .env file and try again.'}`,
+  ? '**CopilotKit Notice**: This integration provides basic assistance. For advanced AI capabilities, try switching to **Gemini 2.0 Flash** using the AI provider button in the navbar!' 
+  : 'Please check your Gemini API key configuration and try again.'}
+
+**Quick fix**: ${aiProvider === 'copilotkit' ? 'Switch to Gemini' : 'Check API settings'} for immediate assistance! 🔄`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         source: aiProvider
       };
@@ -190,7 +194,7 @@ ${aiProvider === 'copilotkit'
       setMessages(prev => [...prev, errorMessage]);
       
       if (aiProvider === 'copilotkit') {
-        toast.error('CopilotKit requires backend setup. Try Gemini instead!');
+        toast.error('Try switching to Gemini for full AI capabilities!');
       } else {
         toast.error(`Gemini error: ${error.message}`);
       }
