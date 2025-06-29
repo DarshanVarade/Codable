@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Brain, 
   Code, 
   HelpCircle, 
   Settings,
@@ -14,7 +13,8 @@ import {
   Trophy,
   CheckCircle,
   ArrowRight,
-  Play
+  Play,
+  Bot
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
@@ -32,12 +32,16 @@ const WelcomeGuide: React.FC = () => {
       id: 'welcome',
       title: `Welcome to Codable, ${displayName}! 🎉`,
       description: 'Your AI-powered coding companion is ready to help you master programming like never before.',
-      icon: Brain,
+      icon: Bot,
       color: 'from-blue-500 to-purple-500',
       content: (
         <div className="text-center space-y-6">
           <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto">
-            <Brain className="w-12 h-12 text-white" />
+            <img 
+              src="https://github.com/DarshanVarade/Data/blob/main/Codable.png?raw=true" 
+              alt="Codable Logo" 
+              className="w-12 h-12 rounded-lg"
+            />
           </div>
           <div>
             <h2 className="text-2xl font-bold mb-4">You're all set! 🚀</h2>
@@ -160,12 +164,12 @@ const WelcomeGuide: React.FC = () => {
       id: 'assistant',
       title: 'AI Assistant',
       description: 'Your personal coding companion powered by Gemini 2.0 Flash.',
-      icon: Brain,
+      icon: Bot,
       color: 'from-cyan-500 to-blue-500',
       content: (
         <div className="space-y-6">
           <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center mx-auto">
-            <Brain className="w-8 h-8 text-white" />
+            <Bot className="w-8 h-8 text-white" />
           </div>
           <div className="text-center">
             <h3 className="text-xl font-bold mb-4">Meet Your AI Assistant</h3>

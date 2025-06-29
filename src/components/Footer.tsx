@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Brain, 
   Github, 
   Heart, 
   Code, 
@@ -70,9 +69,11 @@ const Footer: React.FC = () => {
               className="lg:col-span-1"
             >
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-xl flex items-center justify-center">
-                  <Brain className="w-7 h-7 text-white" />
-                </div>
+                <img 
+                  src="https://github.com/DarshanVarade/Data/blob/main/Codable.png?raw=true" 
+                  alt="Codable Logo" 
+                  className="w-12 h-12 rounded-xl"
+                />
                 <div>
                   <h3 className="text-2xl font-bold bg-gradient-to-r from-primary-dark to-secondary-dark bg-clip-text text-transparent">
                     Codable

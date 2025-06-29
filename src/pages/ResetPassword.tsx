@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Brain, Mail, ArrowLeft } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Mail, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -146,9 +146,11 @@ const ResetPassword: React.FC = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-lg flex items-center justify-center">
-              <Brain className="w-6 h-6 text-white" />
-            </div>
+            <img 
+              src="https://github.com/DarshanVarade/Data/blob/main/Codable.png?raw=true" 
+              alt="Codable Logo" 
+              className="w-10 h-10 rounded-lg"
+            />
             <span className="text-2xl font-bold bg-gradient-to-r from-primary-dark to-secondary-dark bg-clip-text text-transparent">
               Codable
             </span>

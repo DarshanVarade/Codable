@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle, RefreshCw, Crown, Zap, Brain } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle, RefreshCw, Crown, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { auth, db } from '../lib/supabase';
@@ -936,9 +936,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 {/* Logo */}
-                <div className="w-8 h-8 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-lg flex items-center justify-center">
-                  <Brain className="w-5 h-5 text-white" />
-                </div>
+                <img 
+                  src="https://github.com/DarshanVarade/Data/blob/main/Codable.png?raw=true" 
+                  alt="Codable Logo" 
+                  className="w-8 h-8 rounded-lg"
+                />
                 <div>
                   <span className="text-lg font-bold bg-gradient-to-r from-primary-dark to-secondary-dark bg-clip-text text-transparent">
                     Codable

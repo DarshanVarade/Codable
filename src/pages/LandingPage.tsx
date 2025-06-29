@@ -2,7 +2,6 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
-  Brain, 
   Code, 
   Zap, 
   TrendingUp, 
@@ -25,7 +24,7 @@ const LandingPage: React.FC = () => {
 
   const features = [
     {
-      icon: Brain,
+      icon: Bot,
       title: 'AI-Powered Analysis',
       description: 'Advanced AI algorithms analyze your code for bugs, performance issues, and optimization opportunities.',
     },
@@ -51,9 +50,11 @@ const LandingPage: React.FC = () => {
       {/* Navigation */}
       <nav className="relative z-10 flex items-center justify-between p-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-lg flex items-center justify-center">
-            <Brain className="w-5 h-5 text-white" />
-          </div>
+          <img 
+            src="https://github.com/DarshanVarade/Data/blob/main/Codable.png?raw=true" 
+            alt="Codable Logo" 
+            className="w-8 h-8 rounded-lg"
+          />
           <span className="text-xl font-bold bg-gradient-to-r from-primary-dark to-secondary-dark bg-clip-text text-transparent">
             Codable
           </span>
