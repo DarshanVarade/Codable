@@ -15,7 +15,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { supabase } from './lib/supabase';
 import toast from 'react-hot-toast';
 
-// Component to handle email verification and password reset
+// Component to handle email verification and magic link authentication
 const AuthHandler: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ const AuthHandler: React.FC = () => {
       const errorDescription = searchParams.get('error_description');
       const errorCode = searchParams.get('error_code');
 
-      // Also check hash parameters (for OAuth flows)
+      // Also check hash parameters (for OAuth flows and magic links)
       const hash = window.location.hash.substring(1);
       const hashParams = new URLSearchParams(hash);
       const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
@@ -47,22 +47,49 @@ const AuthHandler: React.FC = () => {
         errorCode
       });
 
-      // Handle errors - redirect to reset password page for expired tokens
+      // Handle errors
       if (hashError || error) {
         console.error('Auth callback error:', hashError || error, errorDescription);
         
         if (errorCode === 'otp_expired' || hashError === 'access_denied') {
-          toast.error('Reset link has expired. Please request a new one.');
-          navigate('/reset-password', { replace: true });
-          return;
+          toast.error('Link has expired. Please request a new one.');
+        } else {
+          toast.error(errorDescription || 'Authentication failed');
         }
         
-        toast.error(errorDescription || 'Authentication failed');
         navigate('/', { replace: true });
         return;
       }
 
-      // Handle password reset (recovery type) - this is the main case for password reset links
+      // Handle magic link authentication (magiclink type)
+      if (hashType === 'magiclink' && accessToken && refreshToken) {
+        try {
+          console.log('Processing magic link authentication');
+          
+          // Set the session for magic link authentication
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          
+          if (sessionError) {
+            console.error('Magic link session error:', sessionError);
+            throw sessionError;
+          }
+          
+          console.log('Magic link authentication successful');
+          toast.success('Successfully signed in with magic link!');
+          navigate('/app/dashboard', { replace: true });
+          return;
+        } catch (error: any) {
+          console.error('Magic link authentication error:', error);
+          toast.error('Magic link authentication failed. Please try again.');
+          navigate('/', { replace: true });
+          return;
+        }
+      }
+
+      // Handle password reset (recovery type)
       if (hashType === 'recovery' && accessToken && refreshToken) {
         try {
           console.log('Processing password reset with valid tokens');
@@ -116,7 +143,7 @@ const AuthHandler: React.FC = () => {
         }
       }
       
-      // Handle other auth callbacks (like magic links or OAuth)
+      // Handle other auth callbacks (like OAuth or general magic links)
       if (accessToken && refreshToken && !hashType) {
         try {
           console.log('Processing general auth callback');

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle, RefreshCw, Crown } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle, RefreshCw, Crown, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { auth, db } from '../lib/supabase';
@@ -11,7 +11,7 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-type AuthStep = 'signin' | 'signup' | 'forgot' | 'reset' | 'verify' | 'instructions' | 'admin';
+type AuthStep = 'signin' | 'signup' | 'forgot' | 'reset' | 'verify' | 'instructions' | 'admin' | 'magic-sent';
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [step, setStep] = useState<AuthStep>('signin');
@@ -24,7 +24,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [resetToken, setResetToken] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
-  const { signIn, signUp, resetPassword, updatePassword, resendVerification } = useAuth();
+  const { signIn, signUp, sendMagicLink, resetPassword, updatePassword, resendVerification } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,16 +104,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         }
         setStep('verify');
       } else if (step === 'forgot') {
-        const { error } = await resetPassword(email);
+        // Send magic link instead of password reset
+        const { error } = await sendMagicLink(email);
         if (error) {
           if (error.message.includes('User not found')) {
             setAuthError('No account found with this email address.');
           } else {
-            setAuthError(error.message || 'An error occurred while sending reset email.');
+            setAuthError(error.message || 'An error occurred while sending magic link.');
           }
           throw error;
         }
-        setStep('instructions');
+        setStep('magic-sent');
       } else if (step === 'reset') {
         if (password !== confirmPassword) {
           setAuthError('Passwords do not match');
@@ -163,6 +164,29 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleResendMagicLink = async () => {
+    if (!email) {
+      setAuthError('Please enter your email address first.');
+      return;
+    }
+
+    setLoading(true);
+    setAuthError(null);
+
+    try {
+      const { error } = await sendMagicLink(email);
+      if (error) {
+        setAuthError(error.message || 'Failed to resend magic link.');
+      } else {
+        toast.success('Magic link sent! Check your inbox.');
+      }
+    } catch (error: any) {
+      setAuthError('Failed to resend magic link.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetForm = () => {
     setEmail('');
     setPassword('');
@@ -183,7 +207,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const handleBack = () => {
     setAuthError(null);
-    if (step === 'signup' || step === 'forgot' || step === 'admin') {
+    if (step === 'signup' || step === 'forgot' || step === 'admin' || step === 'magic-sent') {
       setStep('signin');
     } else if (step === 'reset') {
       setStep('forgot');
@@ -198,11 +222,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     switch (step) {
       case 'signin': return 'Welcome Back';
       case 'signup': return 'Create Account';
-      case 'forgot': return 'Reset Password';
+      case 'forgot': return 'Sign In with Magic Link';
       case 'reset': return 'New Password';
       case 'verify': return 'Check Your Email';
       case 'instructions': return 'Check Your Email';
       case 'admin': return 'Admin Login';
+      case 'magic-sent': return 'Magic Link Sent';
       default: return 'Authentication';
     }
   };
@@ -274,9 +299,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         <button
           type="button"
           onClick={() => setStep('forgot')}
-          className="text-sm text-primary-dark hover:underline"
+          className="text-sm text-primary-dark hover:underline flex items-center gap-1"
         >
-          Forgot password?
+          <Zap className="w-4 h-4" />
+          Sign in with Magic Link
         </button>
         <button
           type="button"
@@ -502,13 +528,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     </form>
   );
 
-  const renderForgotPassword = () => (
+  const renderMagicLinkRequest = () => (
     <form onSubmit={handleSubmit} className="space-y-4">
       {renderErrorMessage()}
       
-      <div className="text-center mb-4">
-        <p className="text-gray-600 dark:text-gray-400">
-          Enter your email address and we'll send you a link to reset your password.
+      <div className="text-center mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <Zap className="w-6 h-6 text-blue-600" />
+          <span className="font-semibold text-blue-900 dark:text-blue-100">Magic Link Sign In</span>
+        </div>
+        <p className="text-sm text-blue-800 dark:text-blue-200">
+          Enter your email and we'll send you a magic link to sign in instantly - no password required!
         </p>
       </div>
 
@@ -533,18 +563,86 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-3 bg-gradient-to-r from-primary-dark to-secondary-dark text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? (
           <div className="flex items-center justify-center gap-2">
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Sending Reset Link...
+            Sending Magic Link...
           </div>
         ) : (
-          'Send Reset Link'
+          <div className="flex items-center justify-center gap-2">
+            <Zap className="w-5 h-5" />
+            Send Magic Link
+          </div>
         )}
       </button>
+
+      <div className="text-center">
+        <p className="text-gray-600 dark:text-gray-400 text-sm">
+          Prefer to use a password?
+          <button
+            type="button"
+            onClick={() => setStep('signin')}
+            className="ml-2 text-primary-dark hover:underline font-medium"
+          >
+            Sign In with Password
+          </button>
+        </p>
+      </div>
     </form>
+  );
+
+  const renderMagicLinkSent = () => (
+    <div className="text-center space-y-6">
+      <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto">
+        <Zap className="w-8 h-8 text-blue-500" />
+      </div>
+      
+      <div>
+        <h3 className="text-lg font-semibold mb-2">Magic Link Sent!</h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          We've sent a magic link to <strong>{email}</strong>
+        </p>
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-left">
+          <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Next Steps:</h4>
+          <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
+            <li>Check your email inbox (and spam folder)</li>
+            <li>Click the magic link in the email</li>
+            <li>You'll be automatically signed in and redirected to the dashboard</li>
+          </ol>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <button
+          onClick={handleResendMagicLink}
+          disabled={loading}
+          className="w-full py-2 text-primary-dark border border-primary-dark rounded-lg hover:bg-primary-dark/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <div className="flex items-center justify-center gap-2">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              Resending...
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Resend Magic Link
+            </div>
+          )}
+        </button>
+        <button
+          onClick={() => setStep('signin')}
+          className="w-full py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+        >
+          Back to Sign In
+        </button>
+        <p className="text-xs text-gray-500">
+          Didn't receive the email? Check your spam folder or use the resend button above.
+        </p>
+      </div>
+    </div>
   );
 
   const renderResetPassword = () => (
@@ -726,7 +824,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       case 'signin': return renderSignIn();
       case 'admin': return renderAdminLogin();
       case 'signup': return renderSignUp();
-      case 'forgot': return renderForgotPassword();
+      case 'forgot': return renderMagicLinkRequest();
+      case 'magic-sent': return renderMagicLinkSent();
       case 'reset': return renderResetPassword();
       case 'verify': return renderVerificationInstructions();
       case 'instructions': return renderPasswordResetInstructions();
@@ -753,7 +852,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                {(step !== 'signin' && step !== 'verify' && step !== 'instructions') && (
+                {(step !== 'signin' && step !== 'verify' && step !== 'instructions' && step !== 'magic-sent') && (
                   <button
                     onClick={handleBack}
                     className="p-1 hover:bg-gray-100/50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"

@@ -37,6 +37,12 @@ export const useAuth = () => {
     return { error };
   };
 
+  // Send magic link for passwordless sign in
+  const sendMagicLink = async (email: string) => {
+    const { data, error } = await auth.sendMagicLink(email);
+    return { data, error };
+  };
+
   const resetPassword = async (email: string) => {
     const { data, error } = await auth.resetPassword(email);
     return { data, error };
@@ -58,6 +64,7 @@ export const useAuth = () => {
     signUp,
     signIn,
     signOut,
+    sendMagicLink,
     resetPassword,
     updatePassword,
     resendVerification

@@ -40,6 +40,16 @@ export const auth = {
     return await supabase.auth.signOut();
   },
 
+  // Send magic link for sign in
+  sendMagicLink: async (email: string) => {
+    return await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`
+      }
+    });
+  },
+
   resetPassword: async (email: string) => {
     return await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/callback`
