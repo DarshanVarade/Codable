@@ -9,7 +9,6 @@ import {
   Users, 
   Award,
   ChevronRight,
-  Play,
   GitBranch,
   Bot,
   Target
@@ -81,11 +80,6 @@ const LandingPage: React.FC = () => {
             transition={{ duration: 0.8 }}
             className="mb-8"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-dark/20 rounded-full text-sm text-primary-dark mb-6">
-              <Zap className="w-4 h-4" />
-              Powered by Gemini 2.0 Flash
-            </div>
-            
             <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
               Master Code
               <br />
@@ -113,11 +107,6 @@ const LandingPage: React.FC = () => {
               <span className="text-lg font-semibold">Start Learning Free</span>
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
-            
-            <button className="group inline-flex items-center gap-2 px-8 py-4 border border-gray-600 rounded-lg hover:border-primary-dark hover:bg-primary-dark/10 transition-all duration-300">
-              <Play className="w-5 h-5" />
-              <span className="text-lg font-semibold">Watch Demo</span>
-            </button>
           </motion.div>
 
           {/* Stats */}
