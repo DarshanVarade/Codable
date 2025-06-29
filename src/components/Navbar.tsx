@@ -8,15 +8,18 @@ import {
   Brain,
   User,
   Menu,
-  X
+  X,
+  Crown
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
+import { useAdminAuth } from '../hooks/useAdminAuth';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
+  const { isAdmin } = useAdminAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -27,6 +30,11 @@ const Navbar: React.FC = () => {
     { icon: Code, label: 'Code Analyzer', path: '/app/analyzer' },
     { icon: HelpCircle, label: 'Problem Solver', path: '/app/solver' },
   ];
+
+  // Add admin menu item if user is admin
+  if (isAdmin) {
+    menuItems.push({ icon: Crown, label: 'Admin Panel', path: '/admin' });
+  }
 
   const handleSignOut = async () => {
     await signOut();
@@ -82,7 +90,7 @@ const Navbar: React.FC = () => {
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
-                <item.icon className="w-4 h-4" />
+                <item.icon className={`w-4 h-4 ${item.path === '/admin' ? 'text-yellow-500' : ''}`} />
                 <span className="font-medium">{item.label}</span>
               </Link>
             );
@@ -91,6 +99,14 @@ const Navbar: React.FC = () => {
 
         {/* User Menu */}
         <div className="flex items-center gap-4">
+          {/* Admin Badge - Hidden on small screens */}
+          {isAdmin && (
+            <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-full">
+              <Crown className="w-4 h-4 text-yellow-500" />
+              <span className="text-xs font-medium text-yellow-600 dark:text-yellow-400">Admin</span>
+            </div>
+          )}
+          
           {/* User Name - Hidden on small screens */}
           <div className="hidden md:block">
             <p className="text-sm font-medium">
@@ -116,6 +132,12 @@ const Navbar: React.FC = () => {
               <div className="p-3 border-b border-gray-200/20 dark:border-gray-700/20">
                 <p className="font-medium text-sm">{displayName}</p>
                 <p className="text-xs text-gray-600 dark:text-gray-400">{user?.email}</p>
+                {isAdmin && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <Crown className="w-3 h-3 text-yellow-500" />
+                    <span className="text-xs text-yellow-600 dark:text-yellow-400">Administrator</span>
+                  </div>
+                )}
               </div>
               <div className="p-2 grid grid-cols-2 gap-1">
                 <Link
@@ -135,6 +157,18 @@ const Navbar: React.FC = () => {
                   <span className="text-xs">Preferences</span>
                 </Link>
               </div>
+              {isAdmin && (
+                <div className="p-2 border-t border-gray-200/20 dark:border-gray-700/20">
+                  <Link
+                    to="/admin"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-yellow-700 dark:text-yellow-400 rounded-lg hover:bg-yellow-100/70 dark:hover:bg-yellow-900/30 transition-colors"
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    <Crown className="w-4 h-4" />
+                    Admin Panel
+                  </Link>
+                </div>
+              )}
               <div className="p-2 border-t border-gray-200/20 dark:border-gray-700/20">
                 <button
                   onClick={handleSignOut}
@@ -176,7 +210,7 @@ const Navbar: React.FC = () => {
                       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-100'
                   }`}
                 >
-                  <item.icon className="w-5 h-5" />
+                  <item.icon className={`w-5 h-5 ${item.path === '/admin' ? 'text-yellow-500' : ''}`} />
                   <span className="font-medium">{item.label}</span>
                 </Link>
               );

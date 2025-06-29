@@ -7,8 +7,10 @@ import Dashboard from './pages/Dashboard';
 import CodeAnalyzer from './pages/CodeAnalyzer';
 import ProblemSolver from './pages/ProblemSolver';
 import Settings from './pages/Settings';
+import AdminPanel from './pages/AdminPanel';
 import ResetPassword from './pages/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 import { ThemeProvider } from './context/ThemeContext';
 import { supabase } from './lib/supabase';
 import toast from 'react-hot-toast';
@@ -124,6 +126,13 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth/callback" element={<AuthHandler />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <AdminPanel />
+                </AdminRoute>
+              </ProtectedRoute>
+            } />
             <Route path="/app/*" element={
               <ProtectedRoute>
                 <Layout>
