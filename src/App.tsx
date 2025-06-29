@@ -28,10 +28,19 @@ const AuthHandler: React.FC = () => {
       const refreshToken = searchParams.get('refresh_token');
       const error = searchParams.get('error');
       const errorDescription = searchParams.get('error_description');
+      const errorCode = searchParams.get('error_code');
 
-      // Handle errors first
+      // Handle errors - redirect to reset password page for expired tokens
       if (error) {
         console.error('Auth callback error:', error, errorDescription);
+        
+        if (errorCode === 'otp_expired' || error === 'access_denied') {
+          toast.error('Reset link has expired. Please request a new one.');
+          // Redirect to reset password page where user can enter email again
+          navigate('/reset-password', { replace: true });
+          return;
+        }
+        
         toast.error(errorDescription || 'Authentication failed');
         navigate('/', { replace: true });
         return;
@@ -56,8 +65,8 @@ const AuthHandler: React.FC = () => {
           return;
         } catch (error: any) {
           console.error('Password reset session error:', error);
-          toast.error('Invalid or expired reset link');
-          navigate('/', { replace: true });
+          toast.error('Invalid or expired reset link. Please request a new one.');
+          navigate('/reset-password', { replace: true });
           return;
         }
       }
