@@ -23,7 +23,8 @@ export const auth = {
       email,
       password,
       options: {
-        data: userData
+        data: userData,
+        emailRedirectTo: `${window.location.origin}/app/dashboard`
       }
     });
   },
@@ -37,6 +38,18 @@ export const auth = {
 
   signOut: async () => {
     return await supabase.auth.signOut();
+  },
+
+  resetPassword: async (email: string) => {
+    return await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`
+    });
+  },
+
+  updatePassword: async (password: string) => {
+    return await supabase.auth.updateUser({
+      password: password
+    });
   },
 
   getCurrentUser: async () => {

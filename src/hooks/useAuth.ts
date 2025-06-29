@@ -37,11 +37,23 @@ export const useAuth = () => {
     return { error };
   };
 
+  const resetPassword = async (email: string) => {
+    const { data, error } = await auth.resetPassword(email);
+    return { data, error };
+  };
+
+  const updatePassword = async (password: string) => {
+    const { data, error } = await auth.updatePassword(password);
+    return { data, error };
+  };
+
   return {
     user,
     loading,
     signUp,
     signIn,
-    signOut
+    signOut,
+    resetPassword,
+    updatePassword
   };
 };
