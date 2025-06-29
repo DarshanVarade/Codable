@@ -15,7 +15,7 @@ const model = genAI.getGenerativeModel({
     temperature: 0.7,
     topP: 0.8,
     topK: 40,
-    maxOutputTokens: 2048, // Reduced for shorter responses
+    maxOutputTokens: 2048,
   }
 });
 
@@ -142,7 +142,7 @@ Provide actionable insights and be constructive in your feedback.
     }
   },
 
-  // Generate solution for programming problems
+  // Generate solution for programming problems - Enhanced for proper code formatting
   solveProblem: async (problemStatement: string, language: string): Promise<ProblemSolution> => {
     const prompt = `
 You are an expert programmer powered by Gemini 2.0 Flash. Solve the following programming problem in ${language}.
@@ -150,9 +150,11 @@ You are an expert programmer powered by Gemini 2.0 Flash. Solve the following pr
 Problem Statement:
 ${problemStatement}
 
+IMPORTANT: Generate clean, properly formatted ${language} code with correct syntax and indentation.
+
 Please provide a complete solution in the following JSON format:
 {
-  "solution_code": "<complete, working code solution>",
+  "solution_code": "<complete, working ${language} code solution with proper formatting and syntax>",
   "explanation": "<detailed explanation of the solution approach>",
   "execution_result": {
     "success": true,
@@ -170,15 +172,17 @@ Please provide a complete solution in the following JSON format:
   ]
 }
 
-Requirements:
-- Write clean, well-commented code
-- Include proper error handling
+Requirements for ${language} code:
+- Write clean, well-commented code with proper indentation
+- Use correct ${language} syntax and conventions
+- Include proper error handling where appropriate
 - Follow best practices for ${language}
 - Provide efficient algorithms
 - Include input validation where appropriate
 - Make the code production-ready
+- Ensure proper formatting and readability
 
-Focus on correctness, efficiency, and readability.
+Focus on correctness, efficiency, and readability. The code should be ready to run in a ${language} environment.
 `;
 
     try {
@@ -200,19 +204,83 @@ Focus on correctness, efficiency, and readability.
     }
   },
 
-  // AI Assistant chat functionality - optimized for short responses
+  // AI Assistant chat functionality - Enhanced for better responses
   chatWithAssistant: async (message: string, context?: string): Promise<string> => {
-    const prompt = `
-You are CodeOrbit AI, an intelligent coding assistant powered by Gemini 2.0 Flash. You help developers with coding questions.
+    // Analyze the user's request to determine the type of response needed
+    const isCodeRequest = /write|create|generate|build|make.*code|function|class|method|algorithm/i.test(message);
+    const isExplanationRequest = /explain|what.*does|how.*work|understand|clarify|describe/i.test(message);
+    const isCodeReview = /review|check|analyze|debug|fix|error|bug|problem/i.test(message);
+    const hasCodeInMessage = /```[\s\S]*```|`[^`]+`/.test(message);
 
-IMPORTANT: Keep responses SHORT and CONCISE. Maximum 3-4 sentences. Be direct and helpful.
+    let prompt = '';
 
+    if (isCodeRequest && !hasCodeInMessage) {
+      // User wants code generation
+      prompt = `
+You are Codable AI, an expert coding assistant. The user is asking for code generation.
+
+User request: ${message}
 ${context ? `Context: ${context}` : ''}
 
-User message: ${message}
+Provide ONLY the requested code with minimal explanation. Format your response as:
 
-Provide a brief, helpful response. Use bullet points for lists. Be encouraging but concise.
+\`\`\`[language]
+[clean, working code here]
+\`\`\`
+
+Brief explanation: [1-2 sentences about what the code does]
+
+Keep it concise and focused on the code they requested.
 `;
+    } else if (isExplanationRequest || hasCodeInMessage) {
+      // User wants explanation or has code to explain
+      prompt = `
+You are Codable AI, an expert coding assistant. The user wants an explanation.
+
+User request: ${message}
+${context ? `Context: ${context}` : ''}
+
+Provide a clear, detailed explanation. If there's code involved, break it down step by step. 
+Use markdown formatting for better readability.
+
+Focus on:
+- Clear explanations
+- Step-by-step breakdown if applicable
+- Key concepts and logic
+- Best practices mentioned
+
+Be thorough but concise.
+`;
+    } else if (isCodeReview) {
+      // User wants code review/debugging
+      prompt = `
+You are Codable AI, an expert coding assistant. The user needs code review or debugging help.
+
+User request: ${message}
+${context ? `Context: ${context}` : ''}
+
+Provide:
+1. **Issues Found**: List any bugs, errors, or problems
+2. **Fixes**: Show corrected code if needed
+3. **Improvements**: Suggest optimizations or best practices
+4. **Explanation**: Explain what was wrong and why
+
+Use code blocks for any code examples. Be specific and actionable.
+`;
+    } else {
+      // General programming question
+      prompt = `
+You are Codable AI, an expert coding assistant powered by Gemini 2.0 Flash.
+
+User question: ${message}
+${context ? `Context: ${context}` : ''}
+
+Provide a helpful, accurate response. If the question involves code, include relevant code examples.
+If it's a concept question, explain clearly with examples.
+
+Keep responses focused and practical. Use markdown formatting for better readability.
+`;
+    }
 
     try {
       const result = await model.generateContent(prompt);
@@ -252,7 +320,7 @@ Keep response under 200 words. Use markdown formatting.
     }
   },
 
-  // Generate optimization suggestions
+  // Generate optimization suggestions - Enhanced for better code formatting
   optimizeCode: async (code: string, language: string): Promise<{
     optimized_code: string;
     improvements: Array<{
@@ -271,7 +339,7 @@ ${code}
 
 Please provide the response in JSON format:
 {
-  "optimized_code": "<improved version of the code>",
+  "optimized_code": "<improved version of the ${language} code with proper formatting and syntax>",
   "improvements": [
     {
       "type": "<type of improvement>",
@@ -283,10 +351,11 @@ Please provide the response in JSON format:
 
 Focus on:
 - Performance optimizations
-- Code readability
-- Best practices
+- Code readability improvements
+- Best practices for ${language}
 - Security improvements
 - Memory efficiency
+- Proper ${language} syntax and formatting
 `;
 
     try {

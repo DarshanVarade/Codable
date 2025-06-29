@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Mic, Brain, Copy, Code, Lightbulb } from 'lucide-react';
+import { X, Send, Brain, Copy, Code } from 'lucide-react';
 import { useAIChat } from '../hooks/useGemini';
-import { db } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
 
@@ -144,6 +143,7 @@ What can I help you with?`,
                     __html: message.content
                       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                       .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                      .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre class="bg-gray-900 text-green-400 p-3 rounded mt-2 mb-2 overflow-x-auto"><code>$2</code></pre>')
                       .replace(/`(.*?)`/g, '<code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">$1</code>')
                   }}
                 />
@@ -175,7 +175,7 @@ What can I help you with?`,
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 400, opacity: 0 }}
       transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-      className="fixed right-0 top-0 w-96 h-full bg-card-light/95 dark:bg-card-dark/95 backdrop-blur-xl border-l border-gray-200/20 dark:border-gray-700/20 z-50 flex flex-col"
+      className="fixed right-0 top-0 w-80 h-full bg-card-light/95 dark:bg-card-dark/95 backdrop-blur-xl border-l border-gray-200/20 dark:border-gray-700/20 z-50 flex flex-col"
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200/20 dark:border-gray-700/20">
@@ -199,8 +199,8 @@ What can I help you with?`,
         </button>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
+      {/* Messages - Smaller container */}
+      <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {messages.map(renderMessage)}
         
         {loading && (
@@ -235,14 +235,15 @@ What can I help you with?`,
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggestions */}
-      <div className="p-4 border-t border-gray-200/20 dark:border-gray-700/20">
-        <div className="flex flex-wrap gap-2 mb-3">
+      {/* Fixed Input Panel at Bottom */}
+      <div className="border-t border-gray-200/20 dark:border-gray-700/20 p-3 bg-gray-50/50 dark:bg-gray-800/50">
+        {/* Suggestions */}
+        <div className="flex flex-wrap gap-1 mb-3">
           {suggestionChips.map((chip) => (
             <button
               key={chip}
               onClick={() => handleSuggestionClick(chip)}
-              className="px-3 py-1 text-xs bg-gray-100/50 dark:bg-gray-800/50 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors border border-gray-200/20 dark:border-gray-700/20"
+              className="px-2 py-1 text-xs bg-gray-100/50 dark:bg-gray-800/50 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors border border-gray-200/20 dark:border-gray-700/20"
             >
               {chip}
             </button>
@@ -257,7 +258,7 @@ What can I help you with?`,
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Ask me about your code..."
-              className="w-full px-3 py-2 text-sm bg-gray-100/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/20 dark:border-gray-700/20 focus:outline-none focus:ring-2 focus:ring-primary-dark/50 resize-none"
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 rounded-lg border border-gray-200/20 dark:border-gray-700/20 focus:outline-none focus:ring-2 focus:ring-primary-dark/50 resize-none"
               rows={2}
               disabled={loading}
             />
