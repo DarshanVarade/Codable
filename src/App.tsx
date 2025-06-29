@@ -13,6 +13,7 @@ import ResetPassword from './pages/ResetPassword';
 import WelcomeGuide from './pages/WelcomeGuide';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import CopilotKitProvider from './components/CopilotKitProvider';
 import { ThemeProvider } from './context/ThemeContext';
 import { supabase, auth } from './lib/supabase';
 import toast from 'react-hot-toast';
@@ -233,49 +234,51 @@ const AuthHandler: React.FC = () => {
 
 function App() {
   return (
-    <ThemeProvider>
-      <Router>
-        <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark transition-colors duration-300">
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 3000,
-              style: {
-                background: '#1F2937',
-                color: '#E5E7EB',
-                border: '1px solid #374151',
-              },
-            }}
-          />
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth/callback" element={<AuthHandler />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/admin" element={
-              <ProtectedRoute>
-                <AdminRoute>
-                  <AdminPanel />
-                </AdminRoute>
-              </ProtectedRoute>
-            } />
-            <Route path="/app/*" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Routes>
-                    <Route path="welcome" element={<WelcomeGuide />} />
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="analyzer" element={<CodeAnalyzer />} />
-                    <Route path="solver" element={<ProblemSolver />} />
-                    <Route path="ai" element={<CodableAI />} />
-                    <Route path="settings" element={<Settings />} />
-                  </Routes>
-                </Layout>
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </div>
-      </Router>
-    </ThemeProvider>
+    <CopilotKitProvider>
+      <ThemeProvider>
+        <Router>
+          <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark transition-colors duration-300">
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 3000,
+                style: {
+                  background: '#1F2937',
+                  color: '#E5E7EB',
+                  border: '1px solid #374151',
+                },
+              }}
+            />
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/auth/callback" element={<AuthHandler />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/admin" element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminPanel />
+                  </AdminRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/app/*" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Routes>
+                      <Route path="welcome" element={<WelcomeGuide />} />
+                      <Route path="dashboard" element={<Dashboard />} />
+                      <Route path="analyzer" element={<CodeAnalyzer />} />
+                      <Route path="solver" element={<ProblemSolver />} />
+                      <Route path="ai" element={<CodableAI />} />
+                      <Route path="settings" element={<Settings />} />
+                    </Routes>
+                  </Layout>
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </div>
+        </Router>
+      </ThemeProvider>
+    </CopilotKitProvider>
   );
 }
 

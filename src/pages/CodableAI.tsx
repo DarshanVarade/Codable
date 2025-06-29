@@ -12,9 +12,12 @@ import {
   CheckCircle,
   AlertCircle,
   Info,
-  RefreshCw
+  RefreshCw,
+  Settings
 } from 'lucide-react';
+import { CopilotSidebar } from '@copilotkit/react-ui';
 import { useAIChat } from '../hooks/useGemini';
+import { useCopilotKitIntegration } from '../hooks/useCopilotKit';
 import toast from 'react-hot-toast';
 
 interface Message {
@@ -23,15 +26,21 @@ interface Message {
   content: string;
   timestamp: string;
   hasCode?: boolean;
+  source?: 'gemini' | 'copilotkit';
 }
 
 const CodableAI: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const { loading, sendMessage } = useAIChat();
+  const [aiProvider, setAiProvider] = useState<'gemini' | 'copilotkit'>('gemini');
+  const [showCopilotSidebar, setShowCopilotSidebar] = useState(false);
+  const { loading: geminiLoading, sendMessage: sendGeminiMessage } = useAIChat();
+  const { loading: copilotLoading, generateCode, chat: copilotChat } = useCopilotKitIntegration();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  const loading = geminiLoading || copilotLoading;
 
   // Initialize with welcome message
   React.useEffect(() => {
@@ -40,7 +49,11 @@ const CodableAI: React.FC = () => {
       role: 'assistant',
       content: `# Welcome to Codable AI! 🚀
 
-I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can help you with:
+I'm your **intelligent coding assistant** powered by both **Gemini 2.0 Flash** and **CopilotKit**. Choose your preferred AI provider:
+
+## 🤖 **AI Providers:**
+- **Gemini 2.0 Flash**: Advanced code analysis, explanations, and generation
+- **CopilotKit**: Enhanced code completion and intelligent suggestions
 
 ## 🔧 **What I Can Do:**
 - **Debug Code**: Find and fix bugs in your code
@@ -58,8 +71,11 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
 - "How can I optimize this SQL query?"
 - "What are the best practices for React components?"
 
-**Just paste your code or ask any programming question to get started!** ✨`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+**Just paste your code or ask any programming question to get started!** ✨
+
+**CopilotKit API Key**: \`${import.meta.env.VITE_COPILOTKIT_API_KEY ? 'Connected ✅' : 'Not configured ❌'}\``,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      source: 'gemini'
     };
     setMessages([welcomeMessage]);
   }, []);
@@ -89,23 +105,38 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
     setInput('');
 
     try {
-      const result = await sendMessage(currentInput, currentConversationId || undefined);
-      
-      if (result) {
-        setCurrentConversationId(result.conversationId);
-        
-        const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: result.response,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          hasCode: /```[\s\S]*```|`[^`]+`/.test(result.response)
-        };
-        
-        setMessages(prev => [...prev, aiMessage]);
+      let response: string;
+      let source: 'gemini' | 'copilotkit';
+
+      if (aiProvider === 'copilotkit') {
+        // Use CopilotKit for response
+        response = await copilotChat(currentInput);
+        source = 'copilotkit';
+        toast.success('Response from CopilotKit! 🤖');
+      } else {
+        // Use Gemini for response
+        const result = await sendGeminiMessage(currentInput, currentConversationId || undefined);
+        if (result) {
+          setCurrentConversationId(result.conversationId);
+          response = result.response;
+          source = 'gemini';
+        } else {
+          throw new Error('Failed to get response');
+        }
       }
+      
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        hasCode: /```[\s\S]*```|`[^`]+`/.test(response),
+        source
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
-      // Error is already handled in the hook
+      // Error is already handled in the hooks
     }
   };
 
@@ -205,11 +236,15 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
         <div className={`max-w-[85%] ${isAI ? 'order-2' : 'order-1'}`}>
           {isAI && (
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-6 h-6 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-full flex items-center justify-center">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                message.source === 'copilotkit' 
+                  ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+                  : 'bg-gradient-to-br from-primary-dark to-secondary-dark'
+              }`}>
                 <Brain className="w-3 h-3 text-white" />
               </div>
               <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Codable AI
+                {message.source === 'copilotkit' ? 'CopilotKit AI' : 'Codable AI'}
               </span>
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             </div>
@@ -286,7 +321,18 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
             </div>
             
             <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-200/50 dark:border-gray-700/50">
-              <span className="text-xs opacity-70">{message.timestamp}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs opacity-70">{message.timestamp}</span>
+                {message.source && (
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    message.source === 'copilotkit' 
+                      ? 'bg-purple-500/20 text-purple-600 dark:text-purple-400' 
+                      : 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                  }`}>
+                    {message.source === 'copilotkit' ? 'CopilotKit' : 'Gemini'}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 {message.hasCode && (
                   <div className="flex items-center gap-1 text-xs opacity-70">
@@ -322,15 +368,49 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
             Codable AI
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Your intelligent coding assistant powered by Gemini 2.0 Flash
+            Your intelligent coding assistant powered by Gemini 2.0 Flash & CopilotKit
           </p>
         </div>
         
         <div className="flex items-center gap-3">
+          {/* AI Provider Selector */}
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+            <button
+              onClick={() => setAiProvider('gemini')}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                aiProvider === 'gemini'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              Gemini
+            </button>
+            <button
+              onClick={() => setAiProvider('copilotkit')}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                aiProvider === 'copilotkit'
+                  ? 'bg-purple-500 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              CopilotKit
+            </button>
+          </div>
+
           <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-xs font-medium text-green-600 dark:text-green-400">Online</span>
+            <span className="text-xs font-medium text-green-600 dark:text-green-400">
+              {aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini'} Online
+            </span>
           </div>
+          
+          <button
+            onClick={() => setShowCopilotSidebar(!showCopilotSidebar)}
+            className="flex items-center gap-2 px-3 py-2 text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            CopilotKit
+          </button>
           
           <button
             onClick={clearChat}
@@ -360,21 +440,33 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
             >
               <div className="max-w-[85%]">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-full flex items-center justify-center">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                    aiProvider === 'copilotkit' 
+                      ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+                      : 'bg-gradient-to-br from-primary-dark to-secondary-dark'
+                  }`}>
                     <Brain className="w-3 h-3 text-white" />
                   </div>
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                    Codable AI
+                    {aiProvider === 'copilotkit' ? 'CopilotKit AI' : 'Codable AI'}
                   </span>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50">
                   <div className="flex items-center gap-3">
                     <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-primary-dark rounded-full animate-bounce" />
-                      <div className="w-2 h-2 bg-primary-dark rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <div className="w-2 h-2 bg-primary-dark rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      <div className={`w-2 h-2 rounded-full animate-bounce ${
+                        aiProvider === 'copilotkit' ? 'bg-purple-500' : 'bg-primary-dark'
+                      }`} />
+                      <div className={`w-2 h-2 rounded-full animate-bounce ${
+                        aiProvider === 'copilotkit' ? 'bg-purple-500' : 'bg-primary-dark'
+                      }`} style={{ animationDelay: '0.1s' }} />
+                      <div className={`w-2 h-2 rounded-full animate-bounce ${
+                        aiProvider === 'copilotkit' ? 'bg-purple-500' : 'bg-primary-dark'
+                      }`} style={{ animationDelay: '0.2s' }} />
                     </div>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Thinking...</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {aiProvider === 'copilotkit' ? 'CopilotKit is thinking...' : 'Thinking...'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -386,6 +478,18 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
 
         {/* Fixed Input Panel at Bottom */}
         <div className="border-t border-gray-200/20 dark:border-gray-700/20 bg-gray-50/50 dark:bg-gray-800/50 p-4">
+          {/* AI Provider Indicator */}
+          <div className="flex items-center justify-center mb-3">
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
+              aiProvider === 'copilotkit' 
+                ? 'bg-purple-500/20 text-purple-600 dark:text-purple-400' 
+                : 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
+            }`}>
+              <Brain className="w-3 h-3" />
+              <span>Powered by {aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini 2.0 Flash'}</span>
+            </div>
+          </div>
+
           {/* Suggestions */}
           <div className="flex flex-wrap gap-2 mb-3">
             {suggestionChips.map((chip) => (
@@ -406,7 +510,7 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask me anything about code... (Shift+Enter for new line)"
+                placeholder={`Ask ${aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini'} anything about code... (Shift+Enter for new line)`}
                 className="w-full px-4 py-3 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary-dark/50 min-h-[60px] max-h-32"
                 rows={2}
                 disabled={loading}
@@ -415,7 +519,11 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
             <button
               onClick={handleSend}
               disabled={loading || !input.trim()}
-              className="px-6 py-3 bg-gradient-to-r from-primary-dark to-secondary-dark text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className={`px-6 py-3 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
+                aiProvider === 'copilotkit' 
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
+                  : 'bg-gradient-to-r from-primary-dark to-secondary-dark'
+              }`}
             >
               <Send className="w-4 h-4" />
               Send
@@ -423,10 +531,20 @@ I'm your **intelligent coding assistant** powered by **Gemini 2.0 Flash**. I can
           </div>
           
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-            Press Enter to send • Shift+Enter for new line
+            Press Enter to send • Shift+Enter for new line • Using {aiProvider === 'copilotkit' ? 'CopilotKit' : 'Gemini 2.0 Flash'}
           </p>
         </div>
       </div>
+
+      {/* CopilotKit Sidebar */}
+      {showCopilotSidebar && (
+        <CopilotSidebar
+          instructions="You are a helpful coding assistant. Help users with their programming questions and code generation needs."
+          defaultOpen={showCopilotSidebar}
+          clickOutsideToClose={true}
+          onSetOpen={setShowCopilotSidebar}
+        />
+      )}
     </div>
   );
 };
