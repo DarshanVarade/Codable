@@ -15,7 +15,7 @@ const model = genAI.getGenerativeModel({
     temperature: 0.7,
     topP: 0.8,
     topK: 40,
-    maxOutputTokens: 8192,
+    maxOutputTokens: 2048, // Reduced for shorter responses
   }
 });
 
@@ -200,21 +200,18 @@ Focus on correctness, efficiency, and readability.
     }
   },
 
-  // AI Assistant chat functionality
+  // AI Assistant chat functionality - optimized for short responses
   chatWithAssistant: async (message: string, context?: string): Promise<string> => {
     const prompt = `
-You are CodeOrbit AI, an intelligent coding assistant powered by Gemini 2.0 Flash. You help developers with:
-- Understanding code and programming concepts
-- Debugging and troubleshooting
-- Code optimization and best practices
-- Learning new technologies
-- Problem-solving approaches
+You are CodeOrbit AI, an intelligent coding assistant powered by Gemini 2.0 Flash. You help developers with coding questions.
+
+IMPORTANT: Keep responses SHORT and CONCISE. Maximum 3-4 sentences. Be direct and helpful.
 
 ${context ? `Context: ${context}` : ''}
 
 User message: ${message}
 
-Provide a helpful, detailed, and friendly response. Use markdown formatting for code examples and structure your response clearly. Be encouraging and educational in your approach.
+Provide a brief, helpful response. Use bullet points for lists. Be encouraging but concise.
 `;
 
     try {
@@ -230,20 +227,19 @@ Provide a helpful, detailed, and friendly response. Use markdown formatting for 
   // Generate code explanations
   explainCode: async (code: string, language: string): Promise<string> => {
     const prompt = `
-Explain the following ${language} code in a clear, educational manner. Break it down step by step and explain what each part does.
+Explain the following ${language} code in a clear, educational manner. Keep it concise but informative.
 
 Code:
 \`\`\`${language}
 ${code}
 \`\`\`
 
-Provide a comprehensive explanation that would help someone understand:
+Provide a brief explanation that covers:
 - What the code does overall
-- How each part works
-- Any important concepts or patterns used
-- Potential improvements or considerations
+- Key concepts used
+- Any important notes
 
-Use markdown formatting and be educational in your approach.
+Keep response under 200 words. Use markdown formatting.
 `;
 
     try {

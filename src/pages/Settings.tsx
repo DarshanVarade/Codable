@@ -4,31 +4,38 @@ import {
   User, 
   Bell, 
   Palette, 
-  Code, 
-  Shield,
-  CreditCard,
   Save,
   X,
   Sun,
   Moon,
-  Monitor
+  Monitor,
+  Camera
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useProfile } from '../hooks/useProfile';
+import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const { theme, setTheme } = useTheme();
+  const { profile, updateProfile } = useProfile();
+  const { user } = useAuth();
   const [defaultLanguage, setDefaultLanguage] = useState('javascript');
   const [analysisDepth, setAnalysisDepth] = useState('standard');
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: profile?.full_name || '',
+    username: profile?.username || '',
+    website: profile?.website || '',
+    location: profile?.location || '',
+    bio: profile?.bio || ''
+  });
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'preferences', label: 'Preferences', icon: Palette },
-    { id: 'editor', label: 'Editor', icon: Code },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'billing', label: 'Billing', icon: CreditCard },
   ];
 
   const languages = [
@@ -40,12 +47,54 @@ const Settings: React.FC = () => {
     { value: 'go', label: 'Go' },
   ];
 
-  const handleSave = () => {
-    toast.success('Settings saved successfully!');
+  const avatarOptions = [
+    { id: 'none', label: 'None', emoji: '👤' },
+    { id: 'developer', label: 'Developer', emoji: '👨‍💻' },
+    { id: 'scientist', label: 'Scientist', emoji: '👨‍🔬' },
+    { id: 'artist', label: 'Artist', emoji: '👨‍🎨' },
+    { id: 'student', label: 'Student', emoji: '👨‍🎓' },
+    { id: 'robot', label: 'Robot', emoji: '🤖' },
+    { id: 'ninja', label: 'Ninja', emoji: '🥷' },
+    { id: 'wizard', label: 'Wizard', emoji: '🧙‍♂️' },
+  ];
+
+  const handleSave = async () => {
+    try {
+      const { error } = await updateProfile(formData);
+      if (error) {
+        toast.error('Failed to update profile');
+      } else {
+        toast.success('Profile updated successfully!');
+      }
+    } catch (error) {
+      toast.error('Failed to update profile');
+    }
   };
 
   const handleCancel = () => {
+    setFormData({
+      full_name: profile?.full_name || '',
+      username: profile?.username || '',
+      website: profile?.website || '',
+      location: profile?.location || '',
+      bio: profile?.bio || ''
+    });
     toast('Changes cancelled');
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAvatarSelect = async (avatarId: string) => {
+    try {
+      const avatarUrl = avatarId === 'none' ? null : avatarOptions.find(opt => opt.id === avatarId)?.emoji;
+      await updateProfile({ avatar_url: avatarUrl });
+      setShowAvatarModal(false);
+      toast.success('Avatar updated successfully!');
+    } catch (error) {
+      toast.error('Failed to update avatar');
+    }
   };
 
   return (
@@ -94,19 +143,22 @@ const Settings: React.FC = () => {
                 <div className="flex items-center gap-6">
                   <div className="relative">
                     <div className="w-24 h-24 bg-gradient-to-br from-primary-dark to-secondary-dark rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                      T
+                      {profile?.avatar_url || (profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U')}
                     </div>
-                    <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary-dark text-white rounded-full flex items-center justify-center hover:bg-primary-dark/80 transition-colors">
-                      <User className="w-4 h-4" />
+                    <button 
+                      onClick={() => setShowAvatarModal(true)}
+                      className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary-dark text-white rounded-full flex items-center justify-center hover:bg-primary-dark/80 transition-colors"
+                    >
+                      <Camera className="w-4 h-4" />
                     </button>
                   </div>
                   
                   <div className="flex gap-3">
-                    <button className="px-4 py-2 bg-primary-dark text-white rounded-lg hover:bg-primary-dark/80 transition-colors">
+                    <button 
+                      onClick={() => setShowAvatarModal(true)}
+                      className="px-4 py-2 bg-primary-dark text-white rounded-lg hover:bg-primary-dark/80 transition-colors"
+                    >
                       Change Avatar
-                    </button>
-                    <button className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors">
-                      Remove
                     </button>
                   </div>
                 </div>
@@ -116,7 +168,8 @@ const Settings: React.FC = () => {
                     <label className="block text-sm font-medium mb-2">Full Name</label>
                     <input
                       type="text"
-                      defaultValue="Test User"
+                      value={formData.full_name}
+                      onChange={(e) => handleInputChange('full_name', e.target.value)}
                       className="w-full px-4 py-2 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
                     />
                   </div>
@@ -125,8 +178,9 @@ const Settings: React.FC = () => {
                     <label className="block text-sm font-medium mb-2">Email</label>
                     <input
                       type="email"
-                      defaultValue="test@example.com"
-                      className="w-full px-4 py-2 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
+                      value={user?.email || ''}
+                      disabled
+                      className="w-full px-4 py-2 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg opacity-50 cursor-not-allowed"
                     />
                     <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                   </div>
@@ -135,7 +189,9 @@ const Settings: React.FC = () => {
                     <label className="block text-sm font-medium mb-2">Username</label>
                     <input
                       type="text"
-                      defaultValue="@testuser"
+                      value={formData.username}
+                      onChange={(e) => handleInputChange('username', e.target.value)}
+                      placeholder="@username"
                       className="w-full px-4 py-2 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
                     />
                   </div>
@@ -144,6 +200,8 @@ const Settings: React.FC = () => {
                     <label className="block text-sm font-medium mb-2">Website</label>
                     <input
                       type="url"
+                      value={formData.website}
+                      onChange={(e) => handleInputChange('website', e.target.value)}
                       placeholder="https://yourwebsite.com"
                       className="w-full px-4 py-2 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
                     />
@@ -153,6 +211,8 @@ const Settings: React.FC = () => {
                     <label className="block text-sm font-medium mb-2">Location</label>
                     <input
                       type="text"
+                      value={formData.location}
+                      onChange={(e) => handleInputChange('location', e.target.value)}
                       placeholder="City, Country"
                       className="w-full px-4 py-2 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
                     />
@@ -163,6 +223,8 @@ const Settings: React.FC = () => {
                   <label className="block text-sm font-medium mb-2">Bio</label>
                   <textarea
                     rows={4}
+                    value={formData.bio}
+                    onChange={(e) => handleInputChange('bio', e.target.value)}
                     placeholder="Tell us about yourself..."
                     className="w-full px-4 py-2 bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-dark/50"
                   />
@@ -246,17 +308,15 @@ const Settings: React.FC = () => {
               </div>
             )}
 
-            {/* Other tab content would go here */}
-            {activeTab !== 'profile' && activeTab !== 'preferences' && (
+            {/* Notifications tab */}
+            {activeTab === 'notifications' && (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                  {tabs.find(tab => tab.id === activeTab)?.icon && 
-                    React.createElement(tabs.find(tab => tab.id === activeTab)!.icon, { className: "w-8 h-8 text-gray-400" })
-                  }
+                  <Bell className="w-8 h-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-medium mb-2">{tabs.find(tab => tab.id === activeTab)?.label}</h3>
+                <h3 className="text-lg font-medium mb-2">Notifications</h3>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} settings coming soon...
+                  Notification settings coming soon...
                 </p>
               </div>
             )}
@@ -283,6 +343,48 @@ const Settings: React.FC = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Avatar Selection Modal */}
+      {showAvatarModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowAvatarModal(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-card-light dark:bg-card-dark rounded-xl border border-gray-200/20 dark:border-gray-700/20 p-6 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold">Choose Avatar</h3>
+              <button
+                onClick={() => setShowAvatarModal(false)}
+                className="p-2 hover:bg-gray-100/50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3">
+              {avatarOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleAvatarSelect(option.id)}
+                  className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200/20 dark:border-gray-700/20 hover:border-primary-dark/50 hover:bg-primary-dark/10 transition-all"
+                >
+                  <span className="text-2xl">{option.emoji}</span>
+                  <span className="text-xs font-medium">{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 };

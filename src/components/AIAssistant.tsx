@@ -30,15 +30,15 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onClose }) => {
     const welcomeMessage: Message = {
       id: 'welcome',
       role: 'assistant',
-      content: `Hi! I'm **CodeOrbit AI**, powered by **Gemini 2.0 Flash**. I'm your intelligent coding assistant and can help you:
+      content: `Hi! I'm **CodeOrbit AI**, powered by **Gemini 2.0 Flash**. I'm your coding assistant.
 
-• **Understand code** - Explain how code works
-• **Debug issues** - Find and fix bugs  
-• **Optimize performance** - Suggest improvements
-• **Learn concepts** - Explain programming topics
-• **Code reviews** - Analyze code quality
+**Quick help:**
+• Code explanations
+• Bug fixes  
+• Optimization tips
+• Programming concepts
 
-What would you like to work on today?`,
+What can I help you with?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     setMessages([welcomeMessage]);
@@ -100,11 +100,9 @@ What would you like to work on today?`,
 
   const suggestionChips = [
     "Explain this code",
-    "Find bugs in my code",
-    "Optimize performance",
-    "Code review",
-    "Best practices",
-    "Debug this error"
+    "Find bugs",
+    "Optimize code",
+    "Best practices"
   ];
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -133,7 +131,7 @@ What would you like to work on today?`,
             </div>
           )}
           
-          <div className={`rounded-lg p-4 ${
+          <div className={`rounded-lg p-3 ${
             isAI
               ? 'bg-gray-100/80 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100'
               : 'bg-gradient-to-r from-primary-dark to-secondary-dark text-white'
@@ -147,7 +145,6 @@ What would you like to work on today?`,
                       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                       .replace(/\*(.*?)\*/g, '<em>$1</em>')
                       .replace(/`(.*?)`/g, '<code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">$1</code>')
-                      .replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-200 dark:bg-gray-700 p-2 rounded mt-2 overflow-x-auto"><code>$1</code></pre>')
                   }}
                 />
               ) : (
@@ -190,7 +187,7 @@ What would you like to work on today?`,
             <h3 className="font-semibold">CodeOrbit AI</h3>
             <p className="text-xs text-green-500 flex items-center gap-1">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              Powered by Gemini 2.0 Flash
+              Gemini 2.0 Flash
             </p>
           </div>
         </div>
@@ -221,7 +218,7 @@ What would you like to work on today?`,
                   CodeOrbit AI
                 </span>
               </div>
-              <div className="bg-gray-100/80 dark:bg-gray-800/80 rounded-lg p-4">
+              <div className="bg-gray-100/80 dark:bg-gray-800/80 rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <div className="flex gap-1">
                     <div className="w-2 h-2 bg-primary-dark rounded-full animate-bounce" />
@@ -259,31 +256,23 @@ What would you like to work on today?`,
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask me anything about your code..."
+              placeholder="Ask me about your code..."
               className="w-full px-3 py-2 text-sm bg-gray-100/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/20 dark:border-gray-700/20 focus:outline-none focus:ring-2 focus:ring-primary-dark/50 resize-none"
               rows={2}
               disabled={loading}
             />
           </div>
-          <div className="flex flex-col gap-1">
-            <button
-              onClick={handleSend}
-              disabled={loading || !input.trim()}
-              className="p-2 bg-primary-dark text-white rounded-lg hover:bg-primary-dark/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-            <button 
-              className="p-2 bg-gray-100/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors"
-              title="Voice input (coming soon)"
-            >
-              <Mic className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            onClick={handleSend}
+            disabled={loading || !input.trim()}
+            className="p-2 bg-primary-dark text-white rounded-lg hover:bg-primary-dark/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Send className="w-4 h-4" />
+          </button>
         </div>
         
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-          Press Enter to send, Shift+Enter for new line
+          Press Enter to send
         </p>
       </div>
     </motion.div>

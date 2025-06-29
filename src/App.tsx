@@ -6,7 +6,6 @@ import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import CodeAnalyzer from './pages/CodeAnalyzer';
 import ProblemSolver from './pages/ProblemSolver';
-import FlowchartViewer from './pages/FlowchartViewer';
 import Settings from './pages/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
@@ -36,7 +35,6 @@ function App() {
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="analyzer" element={<CodeAnalyzer />} />
                     <Route path="solver" element={<ProblemSolver />} />
-                    <Route path="flowchart" element={<FlowchartViewer />} />
                     <Route path="settings" element={<Settings />} />
                   </Routes>
                 </Layout>

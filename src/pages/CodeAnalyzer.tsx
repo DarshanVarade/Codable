@@ -18,12 +18,7 @@ import toast from 'react-hot-toast';
 import { useCodeAnalysis } from '../hooks/useGemini';
 
 const CodeAnalyzer: React.FC = () => {
-  const [code, setCode] = useState(`function fibonacci(n) {
-  if (n <= 1) return n;
-  return fibonacci(n - 1) + fibonacci(n - 2);
-}
-
-console.log(fibonacci(10));`);
+  const [code, setCode] = useState('');
   const [language, setLanguage] = useState('javascript');
   const [activeTab, setActiveTab] = useState('analysis');
   const { analyzing, result, analyzeCode } = useCodeAnalysis();
@@ -220,6 +215,7 @@ console.log(fibonacci(10));`);
                 scrollBeyondLastLine: false,
                 automaticLayout: true,
               }}
+              placeholder="Paste your code here to analyze..."
             />
           </div>
         </motion.div>
@@ -344,19 +340,19 @@ console.log(fibonacci(10));`);
                       <div>
                         <h4 className="font-semibold mb-3">Complexity Analysis</h4>
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Zap className="w-4 h-4 text-green-500" />
-                              <span className="text-sm font-medium">Time Complexity</span>
+                          <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Zap className="w-6 h-6 text-green-500" />
+                              <span className="font-medium text-lg">Time Complexity</span>
                             </div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">{result.complexity.time}</p>
+                            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{result.complexity.time}</p>
                           </div>
-                          <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3">
-                            <div className="flex items-center gap-2 mb-1">
-                              <TrendingUp className="w-4 h-4 text-blue-500" />
-                              <span className="text-sm font-medium">Space Complexity</span>
+                          <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <TrendingUp className="w-6 h-6 text-blue-500" />
+                              <span className="font-medium text-lg">Space Complexity</span>
                             </div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">{result.complexity.space}</p>
+                            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{result.complexity.space}</p>
                           </div>
                         </div>
                       </div>
