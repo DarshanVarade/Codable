@@ -24,7 +24,7 @@ const Footer: React.FC = () => {
       username: 'DarshanVarade',
       avatar: 'DV',
       gradient: 'from-blue-500 to-purple-500',
-      skills: ['React', 'TypeScript', 'Node.js', 'AI Integration']
+      skills: ['Node.js', 'TypeScript', 'AI Integration']
     },
     {
       name: 'Umesh Chaudhari',
@@ -33,7 +33,7 @@ const Footer: React.FC = () => {
       username: 'chaudhariumesh051',
       avatar: 'UC',
       gradient: 'from-green-500 to-blue-500',
-      skills: ['React', 'Node.js', 'Database Design', 'UI/UX']
+      skills: ['React', 'Database Design', 'UI/UX']
     }
   ];
 
