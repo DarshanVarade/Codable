@@ -197,6 +197,32 @@ const LandingPage: React.FC = () => {
 
       {/* Footer */}
       <Footer />
+
+      {/* Built on Bolt Badge - Top Right (Large) */}
+<motion.div
+  initial={{ opacity: 0, x: 20 }}
+  animate={{ opacity: 1, x: 0 }}
+  transition={{ delay: 0.5 }}
+  className="fixed top-4 right-4 z-50"
+>
+  <motion.a
+    href="https://bolt.new"
+    target="_blank"
+    rel="noopener noreferrer"
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    title="Built on Bolt"
+    className="block w-16 h-16"
+  >
+    <img
+      src="https://raw.githubusercontent.com/kickiniteasy/bolt-hackathon-badge/main/src/public/bolt-badge/white_circle_360x360/white_circle_360x360.png"
+      alt="Built on Bolt"
+      className="w-full h-full object-contain rounded-full shadow-md hover:shadow-xl transition"
+    />
+  </motion.a>
+</motion.div>
+
+      
     </div>
   );
 };
